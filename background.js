@@ -84,6 +84,11 @@ async function detachFromTab(tabId) {
     await chrome.debugger.detach(st.session);
     st.attached = false;
     st.session = null;
+    
+    // バッジを即座にクリア
+    chrome.action.setBadgeText({ tabId, text: "" });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
+    
     st.latest = { level: "info", source: "system", text: "デバッグを停止しました。", ts: Date.now() };
     return { ok: true };
   } catch (e) {

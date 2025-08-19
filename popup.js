@@ -101,14 +101,30 @@ async function refresh() {
 
 // デバッグスタートボタン
 document.getElementById("attach").addEventListener("click", async () => {
+  // 即座にUIを更新（レスポンスを待たない）
+  render({ tabId: currentState.tabId, attached: true, latest: { level: "info", source: "system", text: "デバッグを開始しました。", ts: Date.now() } });
+  
+  // バックグラウンドでアタッチ処理を実行
   const res = await send("ATTACH_ACTIVE_TAB");
-  if (!res?.ok) alert(res?.error || "デバッグ開始に失敗しました。\n※DevToolsが既に開いている場合、デバッグを開始できません。");
-  await refresh();
+  if (!res?.ok) {
+    alert(res?.error || "デバッグ開始に失敗しました。\n※DevToolsが既に開いている場合、デバッグを開始できません。");
+    // 失敗時は元の状態に戻す
+    await refresh();
+  } else {
+    // 成功時は最終的な状態を取得
+    await refresh();
+  }
 });
 
 // デバッグ停止ボタン
 document.getElementById("detach").addEventListener("click", async () => {
+  // 即座にUIを更新（レスポンスを待たない）
+  render({ tabId: currentState.tabId, attached: false, latest: { level: "info", source: "system", text: "デバッグを停止しました。", ts: Date.now() } });
+  
+  // バックグラウンドでデタッチ処理を実行
   await send("DETACH_ACTIVE_TAB");
+  
+  // 最終的な状態を取得
   await refresh();
 });
 
