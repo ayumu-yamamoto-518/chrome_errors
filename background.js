@@ -1,26 +1,26 @@
-// ====== 設定 ======
+// Chrome DevTools Protocol のバージョン
 const CDP_VERSION = "1.3";
 
-// タブごとの状態管理
-// stateByTabId[tabId] = {
-//   attached: boolean,      // デバッガーがアタッチされているか
-//   latest: LogItem|null,   // 最新のログアイテム
-//   session: {tabId},       // CDPセッション情報
-//   errorCount: number      // エラーの累積カウント
-// }
+// タブごとの状態管理（デバッグ状態、最新エラー、エラーカウント等）
 const stateByTabId = new Map();
 
-// ====== ユーティリティ関数 ======
+/**
+ * タブの状態を取得または初期化
+ * @param {number} tabId - タブID
+ * @returns {Object} タブの状態オブジェクト
+ */
 function ensureTabState(tabId) {
   if (!stateByTabId.has(tabId)) {
-    stateByTabId.set(tabId, { 
-      attached: false, latest: null, session: null, 
-      errorCount: 0 
-    });
+    stateByTabId.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
   }
   return stateByTabId.get(tabId);
 }
 
+/**
+ * 最新のエラー情報を設定し、エラーカウントとバッジを更新
+ * @param {number} tabId - タブID
+ * @param {Object} log - ログ情報（level, source, text, url, line, column）
+ */
 function setLatest(tabId, log) {
   const st = ensureTabState(tabId);
   st.latest = { ...log, ts: Date.now() };
@@ -30,36 +30,35 @@ function setLatest(tabId, log) {
     st.errorCount++;
   }
   
-  // バッジ更新
+  // バッジの表示を更新
   const badgeText = st.errorCount > 0 ? String(st.errorCount) : "";
   chrome.action.setBadgeText({ tabId, text: badgeText });
-  chrome.action.setBadgeBackgroundColor({ 
-    tabId, 
-    color: st.errorCount > 0 ? "#d00" : "#00000000" 
-  });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: st.errorCount > 0 ? "#d00" : "#00000000" });
 }
 
-function clearLatest(tabId) {
-  const st = ensureTabState(tabId);
-  st.latest = null;
-  st.errorCount = 0;
-  chrome.action.setBadgeText({ tabId, text: "" });
-  chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
-}
-
+/**
+ * 現在アクティブなタブのIDを取得
+ * @returns {Promise<number|null>} アクティブタブのID
+ */
 async function getActiveTabId() {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   return tabs[0]?.id;
 }
 
-// ====== デバッガー操作 ======
+/**
+ * 指定されたタブにデバッガーをアタッチ
+ * @param {number} tabId - タブID
+ * @returns {Promise<Object>} 結果オブジェクト
+ */
 async function attachToTab(tabId) {
   const st = ensureTabState(tabId);
   if (st.attached) return { ok: true };
 
-  const target = { tabId };
   try {
+    const target = { tabId };
+    // CDPデバッガーをアタッチ
     await chrome.debugger.attach(target, CDP_VERSION);
+    // 各種イベントの監視を有効化
     await chrome.debugger.sendCommand(target, "Runtime.enable");
     await chrome.debugger.sendCommand(target, "Console.enable");
     await chrome.debugger.sendCommand(target, "Log.enable");
@@ -67,15 +66,17 @@ async function attachToTab(tabId) {
     
     st.attached = true;
     st.session = target;
-    setLatest(tabId, { level: "info", source: "system", text: "デバッグを開始しました。" });
     return { ok: true };
   } catch (e) {
-    const msg = chrome.runtime.lastError?.message || e?.message || String(e);
-    setLatest(tabId, { level: "error", source: "system", text: `Attach failed: ${msg}` });
-    return { ok: false, error: msg };
+    return { ok: false, error: chrome.runtime.lastError?.message || e?.message || String(e) };
   }
 }
 
+/**
+ * 指定されたタブからデバッガーをデタッチ
+ * @param {number} tabId - タブID
+ * @returns {Promise<Object>} 結果オブジェクト
+ */
 async function detachFromTab(tabId) {
   const st = ensureTabState(tabId);
   if (!st.attached || !st.session) return { ok: true };
@@ -84,26 +85,27 @@ async function detachFromTab(tabId) {
     await chrome.debugger.detach(st.session);
     st.attached = false;
     st.session = null;
-    
-    // バッジを即座にクリア
+    // バッジをクリア
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
-    
-    setLatest(tabId, { level: "info", source: "system", text: "デバッグを停止しました。" });
     return { ok: true };
   } catch (e) {
-    const msg = chrome.runtime.lastError?.message || e?.message || String(e);
-    setLatest(tabId, { level: "error", source: "system", text: `デバッグ停止に失敗: ${msg}` });
-    return { ok: false, error: msg };
+    return { ok: false, error: chrome.runtime.lastError?.message || e?.message || String(e) };
   }
 }
 
 // ====== CDP イベント処理 ======
+
+/**
+ * Chrome DevTools Protocol のイベントを処理
+ * JavaScript例外、コンソール出力、ログ、ネットワークエラーを監視
+ */
 chrome.debugger.onEvent.addListener((source, method, params) => {
   const tabId = source.tabId;
   if (!tabId) return;
 
   switch (method) {
+    // JavaScript例外が発生した場合
     case "Runtime.exceptionThrown": {
       const d = params?.exceptionDetails || {};
       const text = d?.exception?.description || d?.text || 
@@ -119,6 +121,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       break;
     }
     
+    // コンソールAPIが呼ばれた場合（console.error, console.warn等）
     case "Runtime.consoleAPICalled": {
       const type = params?.type || "log";
       const level = type === "error" ? "error" : (type === "warning" ? "warning" : "info");
@@ -134,6 +137,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       break;
     }
     
+    // ログエントリが追加された場合
     case "Log.entryAdded": {
       const e = params?.entry || {};
       setLatest(tabId, {
@@ -147,6 +151,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       break;
     }
     
+    // ネットワークリクエストが失敗した場合
     case "Network.loadingFailed": {
       const e = params || {};
       if (e?.type === "XHR" || e?.type === "Fetch" || e?.blockedReason || e?.errorText) {
@@ -165,15 +170,21 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
 });
 
 // ====== イベントリスナー ======
+
+/**
+ * デバッガーがデタッチされた時の処理
+ */
 chrome.debugger.onDetach.addListener((source, reason) => {
   const tabId = source.tabId;
   if (!tabId) return;
   const st = ensureTabState(tabId);
   st.attached = false;
   st.session = null;
-  setLatest(tabId, { level: "warning", source: "system", text: `Debugger detached: ${reason}` });
 });
 
+/**
+ * タブが削除された時の処理
+ */
 chrome.tabs.onRemoved.addListener((tabId) => {
   const st = stateByTabId.get(tabId);
   if (st?.attached && st.session) {
@@ -182,17 +193,23 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   stateByTabId.delete(tabId);
 });
 
+/**
+ * タブが更新された時の処理（ページ読み込み時にエラーカウントをリセット）
+ */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     const st = ensureTabState(tabId);
     st.errorCount = 0;
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
-    st.latest = { level: "info", source: "system", text: "ページ読み込み中...", ts: Date.now() };
   }
 });
 
 // ====== メッセージ通信 ======
+
+/**
+ * ポップアップからのメッセージを処理
+ */
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     if (!msg || !msg.type) return;
@@ -201,6 +218,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
 
     switch (msg.type) {
+      // 現在のタブの状態を取得
       case "GET_STATE_FOR_ACTIVE_TAB": {
         const st = ensureTabState(tabId);
         sendResponse({
@@ -210,27 +228,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         });
         break;
       }
+      // デバッグを開始
       case "ATTACH_ACTIVE_TAB": {
         const res = await attachToTab(tabId);
         sendResponse(res);
         break;
       }
+      // デバッグを停止
       case "DETACH_ACTIVE_TAB": {
         const res = await detachFromTab(tabId);
         sendResponse(res);
-        break;
-      }
-      case "CLEAR_LATEST_ACTIVE_TAB": {
-        clearLatest(tabId);
-        sendResponse({ ok: true });
-        break;
-      }
-      case "RESET_ERROR_COUNT_ACTIVE_TAB": {
-        const st = ensureTabState(tabId);
-        st.errorCount = 0;
-        chrome.action.setBadgeText({ tabId, text: "" });
-        chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
-        sendResponse({ ok: true });
         break;
       }
     }
