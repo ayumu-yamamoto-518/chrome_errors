@@ -138,13 +138,16 @@ async function detachFromTab(tabId) {
     st.attached = false;
     st.session = null;
     
+    // ログとエラーカウントをクリア
+    clearLatest(tabId);
+    
     // 成功ログを記録
-    setLatest(tabId, { level: "info", source: "system", text: "Detached from tab." });
+    setLatest(tabId, { level: "info", source: "system", text: "デバッグを停止しました。" });
     return { ok: true };
   } catch (e) {
     // エラーが発生した場合
     const msg = chrome.runtime.lastError?.message || e?.message || String(e);
-    setLatest(tabId, { level: "error", source: "system", text: `Detach failed: ${msg}` });
+    setLatest(tabId, { level: "error", source: "system", text: `デバッグ停止に失敗: ${msg}` });
     return { ok: false, error: msg };
   }
 }

@@ -17,11 +17,11 @@ function render(state) {
   const status = document.getElementById("status");
 
   if (!state || state.tabId == null) {
-    status.textContent = "No active tab";
+    status.textContent = "タブなし";
     latestEl.innerHTML = "";
     return;
   }
-  status.textContent = state.attached ? "Attached" : "Detached";
+  status.textContent = state.attached ? "デバッグ中" : "停止中";
 
   const log = state.latest;
   if (!log) {
@@ -59,17 +59,12 @@ async function refresh() {
 
 document.getElementById("attach").addEventListener("click", async () => {
   const res = await send("ATTACH_ACTIVE_TAB");
-  if (!res?.ok) alert(res?.error || "Attach failed.\n※DevToolsが既に開いている場合、アタッチできません。");
+  if (!res?.ok) alert(res?.error || "デバッグ開始に失敗しました。\n※DevToolsが既に開いている場合、デバッグを開始できません。");
   await refresh();
 });
 
 document.getElementById("detach").addEventListener("click", async () => {
   await send("DETACH_ACTIVE_TAB");
-  await refresh();
-});
-
-document.getElementById("clear").addEventListener("click", async () => {
-  await send("CLEAR_LATEST_ACTIVE_TAB");
   await refresh();
 });
 
