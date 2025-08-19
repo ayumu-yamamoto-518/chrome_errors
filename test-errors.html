@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エラーテストページ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .error-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error-button {
+            background-color: #dc3545;
+        }
+        .error-button:hover {
+            background-color: #c82333;
+        }
+        .warning-button {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .warning-button:hover {
+            background-color: #e0a800;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>エラーテストページ</h1>
+    <p>このページはChrome拡張機能のエラー検出機能をテストするためのものです。</p>
+
+    <div class="error-section">
+        <h2>JavaScript エラー</h2>
+        <button onclick="throwReferenceError()">ReferenceError を発生</button>
+        <button onclick="throwTypeError()">TypeError を発生</button>
+        <button onclick="throwSyntaxError()">SyntaxError を発生</button>
+        <button onclick="throwCustomError()">カスタムエラー を発生</button>
+    </div>
+
+    <div class="error-section">
+        <h2>コンソール エラー</h2>
+        <button onclick="consoleError()">console.error() を実行</button>
+        <button onclick="consoleWarn()">console.warn() を実行</button>
+        <button onclick="consoleInfo()">console.info() を実行</button>
+    </div>
+
+    <div class="error-section">
+        <h2>ネットワーク エラー</h2>
+        <button onclick="fetchError()">存在しないURLにfetch</button>
+        <button onclick="timeoutError()">タイムアウトエラー</button>
+    </div>
+
+    <div class="error-section">
+        <h2>DOM エラー</h2>
+        <button onclick="domError()">DOM操作エラー</button>
+        <button onclick="eventError()">イベントエラー</button>
+    </div>
+
+    <div class="error-section">
+        <h2>その他のエラー</h2>
+        <button onclick="promiseError()">Promise エラー</button>
+        <button onclick="asyncError()">Async/Await エラー</button>
+        <button onclick="setIntervalError()">setInterval エラー</button>
+    </div>
+
+    <div class="error-section">
+        <h2>エラーログ</h2>
+        <div id="errorLog"></div>
+    </div>
+
+    <script>
+        // エラーログを表示する関数
+        function logError(message) {
+            const log = document.getElementById('errorLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        }
+
+        // JavaScript エラー
+        function throwReferenceError() {
+            try {
+                // 毎回異なる変数名でエラーを発生させる
+                const randomVar = 'undefinedVariable' + Date.now();
+                eval(`${randomVar}.someMethod()`);
+            } catch (error) {
+                logError(`ReferenceError: ${error.message}`);
+                throw error;
+            }
+        }
+
+        function throwTypeError() {
+            try {
+                // 毎回異なるオブジェクトでエラーを発生させる
+                const values = [null, undefined, 123, "string", true, {}];
+                const randomIndex = Date.now() % values.length;
+                const randomValue = values[randomIndex];
+                randomValue.toString();
+            } catch (error) {
+                logError(`TypeError: ${error.message}`);
+                throw error;
+            }
+        }
+
+        function throwSyntaxError() {
+            try {
+                // 毎回異なる構文エラーを発生させる
+                const syntaxErrors = [
+                    'function() {',
+                    'const x = {',
+                    'if (',
+                    'for (',
+                    'while ('
+                ];
+                const randomIndex = Date.now() % syntaxErrors.length;
+                eval(syntaxErrors[randomIndex]);
+            } catch (error) {
+                logError(`SyntaxError: ${error.message}`);
+                throw error;
+            }
+        }
+
+        function throwCustomError() {
+            try {
+                throw new Error(`これはカスタムエラーメッセージです (${Date.now()})`);
+            } catch (error) {
+                logError(`CustomError: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // コンソール エラー
+        function consoleError() {
+            console.error(`これはconsole.error()で出力されたエラーメッセージです (${Date.now()})`);
+            logError('console.error() を実行しました');
+        }
+
+        function consoleWarn() {
+            console.warn(`これはconsole.warn()で出力された警告メッセージです (${Date.now()})`);
+            logError('console.warn() を実行しました');
+        }
+
+        function consoleInfo() {
+            console.info(`これはconsole.info()で出力された情報メッセージです (${Date.now()})`);
+            logError('console.info() を実行しました');
+        }
+
+        // ネットワーク エラー
+        function fetchError() {
+            fetch('https://this-url-does-not-exist-12345.com/api/test')
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    logError(`Fetch Error: ${error.message}`);
+                });
+        }
+
+        function timeoutError() {
+            setTimeout(() => {
+                throw new Error(`タイムアウトエラーが発生しました (${Date.now()})`);
+            }, 1000);
+            logError('タイムアウトエラーを設定しました（1秒後）');
+        }
+
+        // DOM エラー
+        function domError() {
+            try {
+                const element = document.getElementById('non-existent-element');
+                element.innerHTML = 'この要素は存在しません';
+            } catch (error) {
+                logError(`DOM Error: ${error.message}`);
+                throw error;
+            }
+        }
+
+        function eventError() {
+            try {
+                const event = new Event('custom-event');
+                event.nonExistentProperty = 'test';
+            } catch (error) {
+                logError(`Event Error: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // その他のエラー
+        function promiseError() {
+            new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`Promise エラーが発生しました (${Date.now()})`));
+                }, 500);
+            }).catch(error => {
+                console.error('Promise error:', error);
+                logError(`Promise Error: ${error.message}`);
+            });
+        }
+
+        function asyncError() {
+            async function asyncFunction() {
+                throw new Error(`Async/Await エラーが発生しました (${Date.now()})`);
+            }
+            
+            asyncFunction().catch(error => {
+                console.error('Async error:', error);
+                logError(`Async Error: ${error.message}`);
+            });
+        }
+
+        function setIntervalError() {
+            const interval = setInterval(() => {
+                try {
+                    throw new Error(`setInterval エラーが発生しました (${Date.now()})`);
+                } catch (error) {
+                    console.error('setInterval error:', error);
+                    logError(`setInterval Error: ${error.message}`);
+                    clearInterval(interval);
+                }
+            }, 2000);
+            logError('setInterval エラーを設定しました（2秒間隔）');
+        }
+
+        // ページ読み込み時に自動でエラーを発生させる
+        window.addEventListener('load', () => {
+            console.log('テストページが読み込まれました');
+            logError('ページが読み込まれました');
+        });
+
+        // 未処理のエラーをキャッチ
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            logError(`Global Error: ${event.error.message}`);
+        });
+
+        // 未処理のPromiseエラーをキャッチ
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            logError(`Unhandled Promise Error: ${event.reason.message}`);
+        });
+    </script>
+</body>
+</html>
