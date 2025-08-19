@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CDP Errors (Latest Only)</title>
+  <style>
+    body { font: 13px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; margin: 12px; min-width: 420px; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    button { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; }
+    .badge { font-weight: 600; }
+    .bar { display:flex; gap:8px; align-items:center; margin: 8px 0; }
+    .log { border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px; margin: 8px 0; }
+    .head { display:flex; gap:8px; align-items:center; margin-bottom:4px; }
+    .pill { font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid #ddd; }
+    .pill.error { border-color: #d33; }
+    .pill.warning { border-color: #f2a100; }
+    .pill.info { border-color: #999; }
+    .src { font-size: 11px; color: #666; margin-left: auto; }
+    .msg { white-space: pre-wrap; }
+    .meta { font-size: 11px; color: #666; margin-top: 4px; }
+    .empty { color: #666; }
+    textarea { width: 100%; min-height: 140px; border-radius: 8px; padding: 8px; border: 1px solid #ddd; }
+    .small { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <!-- 接続＆状態 -->
+  <div class="row">
+    <button id="attach">Attach</button>
+    <button id="detach">Detach</button>
+    <button id="clear">Clear</button>
+    <span class="badge" id="status">-</span>
+  </div>
+
+  <!-- 最新エラー 操作 -->
+  <div class="bar">
+    <button id="copyLatest">最新エラーをコピー</button>
+  </div>
+
+  <!-- 最新エラー 表示 -->
+  <div id="latest"></div>
+
+  <!-- AI に投げる内容 -->
+  <h4>AIに投げる内容</h4>
+  <div class="bar">
+    <button id="insertLatest">最新エラーを挿入</button>
+    <button id="copyPrompt">この文章をコピー</button>
+  </div>
+  <textarea id="promptArea">以下の、エラーを解析してほしい</textarea>
+  <div class="small">※「最新エラーを挿入」で、上のテキスト末尾に追記されます。</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

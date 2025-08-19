@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+    "name": "Error Notifier (CDP, Latest Only)",
+    "version": "1.0.0",
+    "description": "chrome.debugger で DevTools 相当のログを購読し、最新1件のエラーのみをポップアップで扱う",
+    "permissions": ["debugger", "tabs", "storage"],
+    "action": {
+      "default_title": "CDP Errors",
+      "default_popup": "popup/popup.html"
+    },
+    "background": {
+      "service_worker": "background.js"
+    }
+  }
+  
