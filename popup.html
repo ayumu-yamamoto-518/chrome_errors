@@ -22,13 +22,14 @@
   <div id="latest"></div>
 
   <!-- AI に投げる内容 -->
-  <h4>AIに投げる内容</h4>
+  <h4>▼プロンプト用▼</h4>
+  <div class="small">※「最新エラーを挿入」で、下のテキストエリアに追記されます。</div>
   <div class="bar">
-    <button id="insertLatest">最新エラーを挿入</button>
-    <button id="copyPrompt">この文章をコピー</button>
+    <button id="insertLatest">① 最新エラーを挿入</button>
+    <button id="copyPrompt">② 内容をコピー</button>
   </div>
+  <div id="aiGuide" style="display: none; color: red; font-weight: bold; margin: 8px 0;">最新エラーを挿入ボタンを押して文章をコピーしてください。</div>
   <textarea id="promptArea">以下の、エラーを解析してほしい</textarea>
-  <div class="small">※「最新エラーを挿入」で、上のテキスト末尾に追記されます。</div>
 
   <script src="popup.js"></script>
 </body>

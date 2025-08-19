@@ -172,6 +172,10 @@ document.getElementById("copyLatest").addEventListener("click", async () => {
   const log = currentState.latest;
   if (!log) return alert("エラーがありません");
   await copyText(formatLog(log));
+  
+  // AI案内メッセージを表示
+  const aiGuide = document.getElementById("aiGuide");
+  aiGuide.style.display = "block";
 });
 
 // プロンプトエリアの参照
@@ -191,6 +195,10 @@ document.getElementById("insertLatest").addEventListener("click", () => {
   const log = currentState.latest;
   if (!log) return alert("挿入できるエラーがありません");
   appendToEditor(formatLog(log));
+  
+  // AI案内メッセージを非表示
+  const aiGuide = document.getElementById("aiGuide");
+  aiGuide.style.display = "none";
 });
 
 // プロンプトエリアの内容をコピー

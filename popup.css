@@ -43,6 +43,18 @@ button {
   border-color: #bd2130;
 }
 
+/* プロンプト操作ボタン（青色で統一） */
+#insertLatest, #copyPrompt {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+#insertLatest:hover, #copyPrompt:hover {
+  background-color: #0056b3;
+  border-color: #004085;
+}
+
 .badge { 
   font-weight: 600; 
 }
