@@ -1,9 +1,13 @@
+/* ====== 基本レイアウト ====== */
+
+/* ポップアップ全体のスタイル */
 body { 
   font: 13px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; 
   margin: 12px; 
   min-width: 420px; 
 }
 
+/* 横並びの要素（ボタンとステータス表示） */
 .row { 
   display: flex; 
   gap: 8px; 
@@ -12,6 +16,9 @@ body {
   flex-wrap: wrap; 
 }
 
+/* ====== ボタンスタイル ====== */
+
+/* ボタンの基本スタイル */
 button { 
   padding: 6px 10px; 
   border: 1px solid #ccc; 
@@ -55,10 +62,16 @@ button {
   border-color: #004085;
 }
 
+/* ====== ステータス表示 ====== */
+
+/* ステータスバッジ（デバッグ中/停止中） */
 .badge { 
   font-weight: 600; 
 }
 
+/* ====== エラーログ表示 ====== */
+
+/* ボタンバー（最新エラーをコピー、最新エラーを挿入） */
 .bar { 
   display: flex; 
   gap: 8px; 
@@ -66,6 +79,7 @@ button {
   margin: 8px 0; 
 }
 
+/* エラーログのコンテナ */
 .log { 
   border: 1px solid #e5e5e5; 
   border-radius: 8px; 
@@ -73,6 +87,7 @@ button {
   margin: 8px 0; 
 }
 
+/* ログのヘッダー部分（レベル、ソース、メタ情報） */
 .head { 
   display: flex; 
   gap: 8px; 
@@ -80,6 +95,7 @@ button {
   margin-bottom: 4px; 
 }
 
+/* ログレベルのピル（error, warning, info） */
 .pill { 
   font-size: 11px; 
   padding: 1px 6px; 
@@ -99,26 +115,33 @@ button {
   border-color: #999; 
 }
 
+/* メタ情報（URL、行番号、タイムスタンプ） */
 .src { 
   font-size: 11px; 
   color: #666; 
   margin-left: auto; 
 }
 
+/* エラーメッセージ本文 */
 .msg { 
   white-space: pre-wrap; 
 }
 
+/* メタ情報（非表示） */
 .meta { 
   font-size: 11px; 
   color: #666; 
   margin-top: 4px; 
 }
 
+/* エラーがない場合の表示 */
 .empty { 
   color: #666; 
 }
 
+/* ====== プロンプトエリア ====== */
+
+/* テキストエリア（AIに投げる内容） */
 textarea { 
   width: 100%; 
   min-height: 140px; 
@@ -127,6 +150,7 @@ textarea {
   border: 1px solid #ddd; 
 }
 
+/* 小さなテキスト（説明文） */
 .small { 
   font-size: 12px; 
   color: #666; 
