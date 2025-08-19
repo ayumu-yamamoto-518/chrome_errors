@@ -6,7 +6,7 @@
     "permissions": ["debugger", "tabs", "storage"],
     "action": {
       "default_title": "CDP Errors",
-      "default_popup": "popup/popup.html"
+      "default_popup": "popup.html"
     },
     "background": {
       "service_worker": "background.js"
