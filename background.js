@@ -25,8 +25,8 @@ function setLatest(tabId, log) {
   const st = ensureTabState(tabId);
   st.latest = { ...log, ts: Date.now() };
   
-  // エラーレベルの場合のみカウントを増やす
-  if (log.level === "error") {
+  // エラーレベルかつシステムメッセージ以外の場合のみカウントを増やす
+  if (log.level === "error" && log.source !== "system") {
     st.errorCount++;
   }
   
