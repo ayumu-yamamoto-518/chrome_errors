@@ -1,7 +1,7 @@
-// Chrome DevTools Protocol のバージョン
+// ====== 設定 ======
 const CDP_VERSION = "1.3";
 
-// タブごとの状態管理（デバッグ状態、最新エラー、エラーカウント等）
+// ====== 状態管理 ======
 const stateByTabId = new Map();
 
 /**
@@ -44,6 +44,8 @@ async function getActiveTabId() {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   return tabs[0]?.id;
 }
+
+// ====== デバッグ操作 ======
 
 /**
  * 指定されたタブにデバッガーをアタッチ
@@ -94,7 +96,7 @@ async function detachFromTab(tabId) {
   }
 }
 
-// ====== CDP イベント処理 ======
+// ====== イベント処理 ======
 
 /**
  * Chrome DevTools Protocol のイベントを処理
@@ -168,8 +170,6 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
     }
   }
 });
-
-// ====== イベントリスナー ======
 
 /**
  * デバッガーがデタッチされた時の処理
