@@ -147,9 +147,6 @@ document.getElementById("copyLatest").addEventListener("click", async () => {
   const log = currentState.latest;
   if (!log) return alert("エラーがありません");
   await copyText(formatLog(log));
-  
-  const aiGuide = document.getElementById("aiGuide");
-  aiGuide.style.display = "block";
 });
 
 // 最新エラーをプロンプトエリアに挿入
@@ -157,9 +154,6 @@ document.getElementById("insertLatest").addEventListener("click", () => {
   const log = currentState.latest;
   if (!log) return alert("挿入できるエラーがありません");
   appendToEditor(formatLog(log));
-  
-  const aiGuide = document.getElementById("aiGuide");
-  aiGuide.style.display = "none";
 });
 
 // プロンプトエリアの内容をコピー
