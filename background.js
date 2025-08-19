@@ -6,7 +6,8 @@ const CDP_VERSION = "1.3"; // Chrome DevTools Protocol のバージョン（安�
 //   attached: boolean,      // デバッガーがアタッチされているか
 //   latest: LogItem|null,   // 最新のログアイテム
 //   session: {tabId},       // CDPセッション情報
-//   errorCount: number      // エラーの累積カウント
+//   errorCount: number,     // エラーの累積カウント
+//   lastErrorText: string   // 最後に処理したエラーテキスト（重複検出用）
 // }
 const stateByTabId = new Map();
 
@@ -24,7 +25,8 @@ function ensureTabState(tabId) {
       attached: false,    // デバッガー未アタッチ
       latest: null,       // 最新ログなし
       session: null,      // セッションなし
-      errorCount: 0       // エラーカウント0
+      errorCount: 0,      // エラーカウント0
+      lastErrorText: ""   // 最後のエラーテキスト（空）
     });
   }
   return stateByTabId.get(tabId);
@@ -41,9 +43,32 @@ function setLatest(tabId, log) {
   // 最新ログを更新（タイムスタンプ付き）
   st.latest = { ...log, ts: Date.now() };
   
-  // エラーレベルの場合のみカウントを増やす
+  // エラーレベルの場合のみカウントを増やす（重複チェック付き）
   if (log.level === "error") {
-    st.errorCount++;
+    // エラーテキストを正規化（余分な情報を除去）
+    let normalizedText = log.text;
+    
+    // "Global error: "プレフィックスを除去
+    if (normalizedText.startsWith("Global error: ")) {
+      normalizedText = normalizedText.substring("Global error: ".length);
+    }
+    
+    // スタックトレース部分を除去（最初の行のみ使用）
+    const firstLine = normalizedText.split('\n')[0];
+    const errorText = firstLine.substring(0, 100); // 最初の100文字で比較
+    
+    console.log(`[DEBUG] Original: "${log.text.substring(0, 50)}..."`);
+    console.log(`[DEBUG] Normalized: "${errorText}"`);
+    
+    // 同じエラーテキストが短時間で重複してきた場合はスキップ
+    if (st.lastErrorText === errorText) {
+      console.log(`[DEBUG] Duplicate error skipped: ${errorText.substring(0, 50)}...`);
+      // 重複でもログは更新する（returnしない）
+    } else {
+      st.errorCount++;
+      st.lastErrorText = errorText;
+      console.log(`[DEBUG] Error count increased: ${st.errorCount}, Source: ${log.source}, Text: ${errorText.substring(0, 50)}...`);
+    }
   }
   
   // 拡張機能アイコンのバッジを更新
@@ -65,6 +90,7 @@ function clearLatest(tabId) {
   // 最新ログとエラーカウントをリセット
   st.latest = null;
   st.errorCount = 0;
+  st.lastErrorText = ""; // 重複検出用のテキストもリセット
   
   // バッジを非表示にする
   chrome.action.setBadgeText({ tabId, text: "" });
@@ -108,8 +134,14 @@ async function attachToTab(tabId) {
     st.attached = true;
     st.session = target;
 
-    // 成功ログを記録
-    setLatest(tabId, { level: "info", source: "system", text: "Attached to tab via CDP." });
+    // 成功ログを記録（エラーカウントは増やさない）
+    const state = ensureTabState(tabId);
+    state.latest = { 
+      level: "info", 
+      source: "system", 
+      text: "デバッグを開始しました。", 
+      ts: Date.now() 
+    };
     return { ok: true };
   } catch (e) {
     // エラーが発生した場合
@@ -138,11 +170,14 @@ async function detachFromTab(tabId) {
     st.attached = false;
     st.session = null;
     
-    // ログとエラーカウントをクリア
-    clearLatest(tabId);
-    
-    // 成功ログを記録
-    setLatest(tabId, { level: "info", source: "system", text: "デバッグを停止しました。" });
+    // 成功ログを記録（エラーカウントは増やさない）
+    const state = ensureTabState(tabId);
+    state.latest = { 
+      level: "info", 
+      source: "system", 
+      text: "デバッグを停止しました。", 
+      ts: Date.now() 
+    };
     return { ok: true };
   } catch (e) {
     // エラーが発生した場合
@@ -164,15 +199,19 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   const tabId = source.tabId;
   if (!tabId) return; // タブIDがない場合は無視
 
+  console.log(`[DEBUG] CDP Event: ${method}, TabId: ${tabId}`);
+
   switch (method) {
     case "Runtime.exceptionThrown": {
       // JavaScript実行時の例外をキャッチ
+      console.log(`[DEBUG] Processing Runtime.exceptionThrown`);
       const d = params?.exceptionDetails || {};
       const text =
         d?.exception?.description ||
         d?.text ||
         (d?.exception && (d.exception.value || d.exception.className)) ||
         "Exception thrown";
+      console.log(`[DEBUG] Exception text: ${String(text)}`);
       setLatest(tabId, {
         level: "error",
         source: "exception",
@@ -188,11 +227,14 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       // console.log, console.error, console.warn等の呼び出しをキャッチ
       const type = params?.type || "log";
       const level = type === "error" ? "error" : (type === "warning" ? "warning" : "info");
+      console.log(`[DEBUG] Processing Runtime.consoleAPICalled, type: ${type}, level: ${level}`);
       const args = (params?.args || []).map(a => a?.value ?? a?.description ?? a?.type);
+      const text = args.join(" ");
+      console.log(`[DEBUG] Console text: ${text}`);
       setLatest(tabId, {
         level,
         source: "console",
-        text: args.join(" "),
+        text: text,
         url: "",
         line: undefined,
         column: undefined
@@ -289,8 +331,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
     
-    // 読み込み開始通知を記録
-    setLatest(tabId, { level: "info", source: "system", text: "Tab loading..." });
+    // 読み込み開始通知を記録（エラーカウントは増やさない）
+    const state = ensureTabState(tabId);
+    state.latest = { 
+      level: "info", 
+      source: "system", 
+      text: "ページ読み込み中...", 
+      ts: Date.now() 
+    };
   }
 });
 
