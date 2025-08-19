@@ -2,6 +2,12 @@
 const CDP_VERSION = "1.3";
 
 // タブごとの状態管理
+// stateByTabId[tabId] = {
+//   attached: boolean,      // デバッガーがアタッチされているか
+//   latest: LogItem|null,   // 最新のログアイテム
+//   session: {tabId},       // CDPセッション情報
+//   errorCount: number      // エラーの累積カウント
+// }
 const stateByTabId = new Map();
 
 // ====== ユーティリティ関数 ======
@@ -9,7 +15,7 @@ function ensureTabState(tabId) {
   if (!stateByTabId.has(tabId)) {
     stateByTabId.set(tabId, { 
       attached: false, latest: null, session: null, 
-      errorCount: 0, lastErrorText: "" 
+      errorCount: 0 
     });
   }
   return stateByTabId.get(tabId);
@@ -21,18 +27,7 @@ function setLatest(tabId, log) {
   
   // エラーレベルの場合のみカウントを増やす
   if (log.level === "error") {
-    // エラーテキストを正規化
-    let text = log.text;
-    if (text.startsWith("Global error: ")) {
-      text = text.substring("Global error: ".length);
-    }
-    const errorText = text.split('\n')[0].substring(0, 100);
-    
-    // 重複チェック
-    if (st.lastErrorText !== errorText) {
-      st.errorCount++;
-      st.lastErrorText = errorText;
-    }
+    st.errorCount++;
   }
   
   // バッジ更新
@@ -48,7 +43,6 @@ function clearLatest(tabId) {
   const st = ensureTabState(tabId);
   st.latest = null;
   st.errorCount = 0;
-  st.lastErrorText = "";
   chrome.action.setBadgeText({ tabId, text: "" });
   chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
 }
