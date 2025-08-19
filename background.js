@@ -1,13 +1,13 @@
 // ====== 設定 ======
 const CDP_VERSION = "1.3"; // 安定版
 // タブごとの状態
-// stateByTabId[tabId] = { attached: boolean, latest: LogItem|null, session: {tabId} }
+// stateByTabId[tabId] = { attached: boolean, latest: LogItem|null, session: {tabId}, errorCount: number }
 const stateByTabId = new Map();
 
 // ====== ユーティリティ ======
 function ensureTabState(tabId) {
   if (!stateByTabId.has(tabId)) {
-    stateByTabId.set(tabId, { attached: false, latest: null, session: null });
+    stateByTabId.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
   }
   return stateByTabId.get(tabId);
 }
@@ -15,15 +15,27 @@ function ensureTabState(tabId) {
 function setLatest(tabId, log) {
   const st = ensureTabState(tabId);
   st.latest = { ...log, ts: Date.now() };
-  // バッジは 0/1 のみ
-  chrome.action.setBadgeText({ tabId, text: "1" });
-  chrome.action.setBadgeBackgroundColor({ tabId, color: "#d00" });
+  
+  // エラーレベルの場合のみカウントを増やす
+  if (log.level === "error") {
+    st.errorCount++;
+  }
+  
+  // バッジにエラー数を表示
+  const badgeText = st.errorCount > 0 ? String(st.errorCount) : "";
+  chrome.action.setBadgeText({ tabId, text: badgeText });
+  
+  // エラーがある場合は赤色、ない場合は透明
+  const badgeColor = st.errorCount > 0 ? "#d00" : "#00000000";
+  chrome.action.setBadgeBackgroundColor({ tabId, color: badgeColor });
 }
 
 function clearLatest(tabId) {
   const st = ensureTabState(tabId);
   st.latest = null;
+  st.errorCount = 0; // エラーカウントもリセット
   chrome.action.setBadgeText({ tabId, text: "" });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
 }
 
 async function getActiveTabId() {
@@ -90,8 +102,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
         text: String(text),
         url: d.url || d?.scriptId || "",
         line: d.lineNumber,
-        column: d.columnNumber,
-        stack: d?.stackTrace ? JSON.stringify(d.stackTrace) : null
+        column: d.columnNumber
       });
       break;
     }
@@ -162,6 +173,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // ナビゲーション開始時に軽く通知（最新のみ上書き）
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
+    // ページ読み込み時にエラーカウントをリセット
+    const st = ensureTabState(tabId);
+    st.errorCount = 0;
+    chrome.action.setBadgeText({ tabId, text: "" });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
+    
     setLatest(tabId, { level: "info", source: "system", text: "Tab loading..." });
   }
 });
@@ -199,6 +216,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const tabId = await getActiveTabId();
       if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
       clearLatest(tabId);
+      sendResponse({ ok: true });
+    }
+
+    if (msg.type === "RESET_ERROR_COUNT_ACTIVE_TAB") {
+      const tabId = await getActiveTabId();
+      if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
+      const st = ensureTabState(tabId);
+      st.errorCount = 0;
+      chrome.action.setBadgeText({ tabId, text: "" });
+      chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
       sendResponse({ ok: true });
     }
   })();
