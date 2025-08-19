@@ -67,7 +67,7 @@ async function attachToTab(tabId) {
     
     st.attached = true;
     st.session = target;
-    st.latest = { level: "info", source: "system", text: "デバッグを開始しました。", ts: Date.now() };
+    setLatest(tabId, { level: "info", source: "system", text: "デバッグを開始しました。" });
     return { ok: true };
   } catch (e) {
     const msg = chrome.runtime.lastError?.message || e?.message || String(e);
@@ -89,7 +89,7 @@ async function detachFromTab(tabId) {
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
     
-    st.latest = { level: "info", source: "system", text: "デバッグを停止しました。", ts: Date.now() };
+    setLatest(tabId, { level: "info", source: "system", text: "デバッグを停止しました。" });
     return { ok: true };
   } catch (e) {
     const msg = chrome.runtime.lastError?.message || e?.message || String(e);
