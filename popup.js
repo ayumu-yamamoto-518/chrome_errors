@@ -125,15 +125,11 @@ async function refresh() {
 
 // デバッグスタートボタン
 document.getElementById("attach").addEventListener("click", async () => {
-  render({ tabId: currentState.tabId, attached: true, latest: null });
-  
   const res = await send("ATTACH_ACTIVE_TAB");
   if (!res?.ok) {
     alert(res?.error || "デバッグ開始に失敗しました。\n※DevToolsが既に開いている場合、デバッグを開始できません。");
-    await refresh();
-  } else {
-    await refresh();
   }
+  await refresh();
 });
 
 // デバッグ停止ボタン
