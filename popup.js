@@ -1,4 +1,12 @@
 // ====== 状態管理 ======
+/**
+ * 現在のポップアップで表示しているタブの状態
+ * 
+ * @type {Object}
+ * @property {number|null} tabId - 現在のタブID（nullの場合はタブなし）
+ * @property {boolean} attached - デバッガーがアタッチされているか
+ * @property {Object|null} latest - 最新のエラー情報（nullの場合はエラーなし）
+ */
 let currentState = { tabId: null, attached: false, latest: null };
 
 // ====== UI操作 ======
