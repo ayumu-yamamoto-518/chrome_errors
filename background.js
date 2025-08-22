@@ -92,21 +92,19 @@ function ensureTabState(tabId) {
  * @param {Object} log - ログ情報（level, source, text, url, line, column）
  */
 function setLatest(tabId, log) {
-  const st = ensureTabState(tabId);
-  st.latest = { ...log, ts: Date.now() };
+  const tabState = ensureTabState(tabId);
+  tabState.latest = { ...log, ts: Date.now() };
   
   // エラーレベルかつシステムメッセージ以外の場合のみカウントを増やす
   if (log.level === "error" && log.source !== "system") {
-    st.errorCount++;
+    tabState.errorCount++;
   }
   
   // バッジの表示を更新
-  const badgeText = st.errorCount > 0 ? String(st.errorCount) : "";
+  const badgeText = tabState.errorCount > 0 ? String(tabState.errorCount) : "";
   chrome.action.setBadgeText({ tabId, text: badgeText });
-  chrome.action.setBadgeBackgroundColor({ tabId, color: st.errorCount > 0 ? "#d00" : "#00000000" });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: tabState.errorCount > 0 ? "#d00" : "#00000000" });
   
-  // Chromeストレージに状態を保存
-  chromeSaveState();
   // Chromeストレージに状態を保存
   chromeSaveState();
 }
@@ -128,8 +126,8 @@ async function getActiveTabId() {
  * @returns {Promise<Object>} 結果オブジェクト
  */
 async function attachToTab(tabId) {
-  const st = ensureTabState(tabId);
-  if (st.attached) return { ok: true };
+  const tabState = ensureTabState(tabId);
+  if (tabState.attached) return { ok: true };
 
   try {
     const target = { tabId };
@@ -141,11 +139,9 @@ async function attachToTab(tabId) {
     await chrome.debugger.sendCommand(target, "Log.enable");
     await chrome.debugger.sendCommand(target, "Network.enable");
     
-    st.attached = true;
-    st.session = target;
+    tabState.attached = true;
+    tabState.session = target;
     
-    // Chromeストレージに状態を保存
-    chromeSaveState();
     // Chromeストレージに状態を保存
     chromeSaveState();
     
@@ -161,13 +157,13 @@ async function attachToTab(tabId) {
  * @returns {Promise<Object>} 結果オブジェクト
  */
 async function detachFromTab(tabId) {
-  const st = ensureTabState(tabId);
-  if (!st.attached || !st.session) return { ok: true };
+  const tabState = ensureTabState(tabId);
+  if (!tabState.attached || !tabState.session) return { ok: true };
   
   try {
-    await chrome.debugger.detach(st.session);
-    st.attached = false;
-    st.session = null;
+    await chrome.debugger.detach(tabState.session);
+    tabState.attached = false;
+    tabState.session = null;
     // バッジをクリア
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
@@ -262,9 +258,9 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
 chrome.debugger.onDetach.addListener((source, reason) => {
   const tabId = source.tabId;
   if (!tabId) return;
-  const st = ensureTabState(tabId);
-  st.attached = false;
-  st.session = null;
+  const tabState = ensureTabState(tabId);
+  tabState.attached = false;
+  tabState.session = null;
 });
 
 /**
@@ -283,8 +279,8 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
-    const st = ensureTabState(tabId);
-    st.errorCount = 0;
+    const tabState = ensureTabState(tabId);
+    tabState.errorCount = 0;
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
   }
@@ -306,16 +302,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       // 状態を取得し、必要に応じてデバッグを自動開始
       case "GET_STATE_AND_AUTO_ATTACH": {
-        const st = ensureTabState(tabId);
-        if (!st.attached) {
+        const tabState = ensureTabState(tabId);
+        if (!tabState.attached) {
           const attachRes = await attachToTab(tabId);
           if (attachRes.ok) {
             // 再取得
-            const updatedSt = ensureTabState(tabId);
+            const updatedTabState = ensureTabState(tabId);
             sendResponse({
               tabId,
-              attached: !!updatedSt?.attached,
-              latest: updatedSt?.latest || null,
+              attached: !!updatedTabState?.attached,
+              latest: updatedTabState?.latest || null,
               autoAttached: true
             });
             break;
@@ -323,8 +319,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         sendResponse({
           tabId,
-          attached: !!st?.attached,
-          latest: st?.latest || null,
+          attached: !!tabState?.attached,
+          latest: tabState?.latest || null,
           autoAttached: false
         });
         break;
