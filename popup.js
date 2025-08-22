@@ -123,13 +123,6 @@ async function refresh() {
 
 // ====== イベント処理 ======
 
-// 最新エラーをコピー
-document.getElementById("copyLatest").addEventListener("click", async () => {
-  const log = currentState.latest;
-  if (!log) return alert("エラーがありません");
-  await copyText(formatLog(log));
-});
-
 // 最新エラーをプロンプトエリアに挿入
 document.getElementById("insertLatest").addEventListener("click", () => {
   const log = currentState.latest;
