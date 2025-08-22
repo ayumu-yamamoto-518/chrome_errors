@@ -7,7 +7,7 @@ const stateByTabId = new Map();
 /**
  * 状態をChromeストレージに保存
  */
-async function saveState() {
+async function chromeSaveState() {
   const stateToSave = {};
   stateByTabId.forEach((state, tabId) => {
     // セッション情報は保存しない（再起動時に無効になるため）
@@ -24,7 +24,7 @@ async function saveState() {
 /**
  * 状態をChromeストレージから復元
  */
-async function loadState() {
+async function chromeLoadState() {
   try {
     const result = await chrome.storage.local.get(['debuggerState']);
     const savedState = result.debuggerState || {};
@@ -45,9 +45,23 @@ async function loadState() {
 }
 
 /**
- * タブの状態を取得または初期化
- * @param {number} tabId - タブID
+ * タブの状態を取得する。存在しない場合は初期状態を作成する
+ * 
+ * @param {number} tabId - 対象のタブID
  * @returns {Object} タブの状態オブジェクト
+ *   - attached: boolean - デバッガーがアタッチされているか
+ *   - latest: Object|null - 最新のエラー情報
+ *   - session: Object|null - CDPデバッガーセッション
+ *   - errorCount: number - エラーの累計数
+ * 
+ * @example
+ * // 初回アクセス時：初期状態を作成して返す
+ * const state = ensureTabState(123);
+ * // → { attached: false, latest: null, session: null, errorCount: 0 }
+ * 
+ * // 2回目以降：既存の状態を返す
+ * const state = ensureTabState(123);
+ * // → 既存の状態オブジェクト
  */
 function ensureTabState(tabId) {
   if (!stateByTabId.has(tabId)) {
@@ -75,8 +89,8 @@ function setLatest(tabId, log) {
   chrome.action.setBadgeText({ tabId, text: badgeText });
   chrome.action.setBadgeBackgroundColor({ tabId, color: st.errorCount > 0 ? "#d00" : "#00000000" });
   
-  // 状態を保存
-  saveState();
+  // Chromeストレージに状態を保存
+  chromeSaveState();
 }
 
 /**
@@ -112,8 +126,8 @@ async function attachToTab(tabId) {
     st.attached = true;
     st.session = target;
     
-    // 状態を保存
-    saveState();
+    // Chromeストレージに状態を保存
+    chromeSaveState();
     
     return { ok: true };
   } catch (e) {
@@ -139,7 +153,7 @@ async function detachFromTab(tabId) {
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
     
     // 状態を保存
-    saveState();
+    chromeSaveState();
     
     return { ok: true };
   } catch (e) {
@@ -300,9 +314,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true;
 });
 
-
+/**
+ * ブラウザ起動時の処理
+ * 
+ * ブラウザが起動された時に実行される処理です。
+ * 保存されたエラー監視の状態を復元し、前回の設定を維持します。
+ * 
+ * 処理内容：
+ * 1. Chromeストレージから保存された状態を読み込み
+ * 2. タブごとのエラー情報とデバッグ状態を復元
+ * 3. デバッグ状態はfalseにリセット（安全のため）
+ * 
+ * @example
+ * // ブラウザを再起動すると自動実行される
+ * // 前回のエラー情報が復元される
+ */
 chrome.runtime.onStartup.addListener(async () => {
-  // 保存された状態を復元
-  await loadState();
-  console.log('ブラウザ再起動: 状態を復元しました');
-});
+    // 保存された状態を復元
+    await chromeLoadState();
+    console.log('ブラウザ再起動: 状態を復元しました');
+  });
+  
