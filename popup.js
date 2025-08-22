@@ -9,6 +9,14 @@
  */
 let currentState = { tabId: null, attached: false, latest: null };
 
+// プロンプトエリアの参照
+const promptArea = document.getElementById("promptArea");
+
+// DOM要素の存在確認
+if (!promptArea) {
+  console.error('promptArea element not found');
+}
+
 // ====== UI操作 ======
 
 /**
@@ -45,22 +53,24 @@ function render(state) {
   try {
     currentState = state || { tabId: null, attached: false, latest: null };
     const latestEl = document.getElementById("latest");
-    const status = document.getElementById("status");
+
+    if (!latestEl) {
+      console.error('latest element not found');
+      return;
+    }
 
     if (!state || state.tabId == null) {
-      status.textContent = "タブなし";
       latestEl.innerHTML = "";
       return;
     }
-    
-    // デバッグ状態を表示（オプション）
-    // status.textContent = state.attached ? "デバッグ中" : "停止中";
 
     const log = state.latest;
     if (!log) {
       latestEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
       // promptAreaもクリア
-      promptArea.value = "以下の、エラーを解析してほしい";
+      if (promptArea) {
+        promptArea.value = "以下の、エラーを解析してほしい";
+      }
       return;
     }
 
@@ -81,12 +91,16 @@ function render(state) {
     `;
 
     // promptAreaに最新エラーを自動反映
-    promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
+    if (promptArea) {
+      promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
+    }
   } catch (error) {
     console.error('UIの更新に失敗しました:', error);
     // エラー時は空の状態を表示
     const latestEl = document.getElementById("latest");
-    latestEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
+    if (latestEl) {
+      latestEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
+    }
   }
 }
 
@@ -124,6 +138,10 @@ async function copyText(text) {
  * テキストエリアにテキストを追加
  */
 function appendToEditor(text) {
+  if (!promptArea) {
+    console.error('promptArea not found');
+    return;
+  }
   const cur = promptArea.value || "";
   promptArea.value = cur + (cur.endsWith("\n") ? "" : "\n") + text + "\n";
 }
@@ -230,12 +248,14 @@ async function handleDebugModeToggle() {
 // ====== イベント処理 ======
 
 // コピーアイコンのクリックイベント
-document.getElementById("copyIcon").addEventListener("click", async () => {
-  await copyText(promptArea.value);
-});
-
-// プロンプトエリアの参照
-const promptArea = document.getElementById("promptArea");
+const copyIcon = document.getElementById("copyIcon");
+if (copyIcon) {
+  copyIcon.addEventListener("click", async () => {
+    if (promptArea) {
+      await copyText(promptArea.value);
+    }
+  });
+}
 
 // ====== 初期化 ======
 handleDebugModeToggle();
