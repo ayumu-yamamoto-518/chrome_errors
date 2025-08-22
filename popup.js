@@ -123,21 +123,6 @@ async function refresh() {
 
 // ====== イベント処理 ======
 
-// デバッグスタートボタン
-document.getElementById("attach").addEventListener("click", async () => {
-  const res = await send("ATTACH_ACTIVE_TAB");
-  if (!res?.ok) {
-    alert(res?.error || "デバッグ開始に失敗しました。\n※DevToolsが既に開いている場合、デバッグを開始できません。");
-  }
-  await refresh();
-});
-
-// デバッグ停止ボタン
-document.getElementById("detach").addEventListener("click", async () => {
-  await send("DETACH_ACTIVE_TAB");
-  await refresh();
-});
-
 // 最新エラーをコピー
 document.getElementById("copyLatest").addEventListener("click", async () => {
   const log = currentState.latest;
