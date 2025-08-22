@@ -48,7 +48,23 @@ async function chromeLoadState() {
  * タブの状態を取得する。存在しない場合は初期状態を作成する
  * 
  * @param {number} tabId - 対象のタブID
+ * タブの状態を取得する。存在しない場合は初期状態を作成する
+ * 
+ * @param {number} tabId - 対象のタブID
  * @returns {Object} タブの状態オブジェクト
+ *   - attached: boolean - デバッガーがアタッチされているか
+ *   - latest: Object|null - 最新のエラー情報
+ *   - session: Object|null - CDPデバッガーセッション
+ *   - errorCount: number - エラーの累計数
+ * 
+ * @example
+ * // 初回アクセス時：初期状態を作成して返す
+ * const state = ensureTabState(123);
+ * // → { attached: false, latest: null, session: null, errorCount: 0 }
+ * 
+ * // 2回目以降：既存の状態を返す
+ * const state = ensureTabState(123);
+ * // → 既存の状態オブジェクト
  *   - attached: boolean - デバッガーがアタッチされているか
  *   - latest: Object|null - 最新のエラー情報
  *   - session: Object|null - CDPデバッガーセッション
@@ -91,6 +107,8 @@ function setLatest(tabId, log) {
   
   // Chromeストレージに状態を保存
   chromeSaveState();
+  // Chromeストレージに状態を保存
+  chromeSaveState();
 }
 
 /**
@@ -126,6 +144,8 @@ async function attachToTab(tabId) {
     st.attached = true;
     st.session = target;
     
+    // Chromeストレージに状態を保存
+    chromeSaveState();
     // Chromeストレージに状態を保存
     chromeSaveState();
     
