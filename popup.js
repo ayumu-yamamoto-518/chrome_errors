@@ -117,7 +117,7 @@ function send(type) {
  * 現在の状態を取得してUIを更新
  */
 async function refresh() {
-  const res = await send("GET_STATE_FOR_ACTIVE_TAB");
+  const res = await send("GET_STATE_AND_AUTO_ATTACH");
   render(res);
 }
 

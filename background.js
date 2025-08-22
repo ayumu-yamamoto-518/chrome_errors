@@ -228,6 +228,31 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         });
         break;
       }
+      // 状態を取得し、必要に応じてデバッグを自動開始
+      case "GET_STATE_AND_AUTO_ATTACH": {
+        const st = ensureTabState(tabId);
+        if (!st.attached) {
+          const attachRes = await attachToTab(tabId);
+          if (attachRes.ok) {
+            // 再取得
+            const updatedSt = ensureTabState(tabId);
+            sendResponse({
+              tabId,
+              attached: !!updatedSt?.attached,
+              latest: updatedSt?.latest || null,
+              autoAttached: true
+            });
+            break;
+          }
+        }
+        sendResponse({
+          tabId,
+          attached: !!st?.attached,
+          latest: st?.latest || null,
+          autoAttached: false
+        });
+        break;
+      }
       // デバッグを開始
       case "ATTACH_ACTIVE_TAB": {
         const res = await attachToTab(tabId);
