@@ -26,30 +26,6 @@ button {
   cursor: pointer; 
 }
 
-/* デバッグスタートボタン（緑色） */
-#attach {
-  background-color: #28a745;
-  color: white;
-  border-color: #28a745;
-}
-
-#attach:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-/* デバッグ停止ボタン（赤色） */
-#detach {
-  background-color: #dc3545;
-  color: white;
-  border-color: #dc3545;
-}
-
-#detach:hover {
-  background-color: #c82333;
-  border-color: #bd2130;
-}
-
 /* プロンプト操作ボタン（青色で統一） */
 #insertLatest, #copyPrompt {
   background-color: #007bff;
