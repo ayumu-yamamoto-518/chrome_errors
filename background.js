@@ -302,12 +302,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       // 状態を取得し、必要に応じてデバッグを自動開始
       case "GET_STATE_AND_AUTO_ATTACH": {
+        // 1. 現在のタブの状態を取得（存在しない場合は初期状態を作成）
         const tabState = ensureTabState(tabId);
+        
+        // 2. デバッガーがアタッチされていない場合のみ自動アタッチを試行
         if (!tabState.attached) {
+          console.log(`[AUTO_ATTACH] タブ${tabId}にデバッガーを自動アタッチします`);
+          
+          // 3. デバッガーをアタッチ
           const attachRes = await attachToTab(tabId);
+          
+          // 4. アタッチが成功した場合
           if (attachRes.ok) {
-            // 再取得
+            // 5. アタッチ後の最新状態を再取得
             const updatedTabState = ensureTabState(tabId);
+            
+            // 6. 成功レスポンスを返す（autoAttached: trueで自動アタッチ成功を示す）
             sendResponse({
               tabId,
               attached: !!updatedTabState?.attached,
@@ -315,8 +325,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
               autoAttached: true
             });
             break;
+          } else {
+            // 7. アタッチが失敗した場合のエラーログ
+            console.log(`[AUTO_ATTACH] タブ${tabId}の自動アタッチ失敗:`, attachRes.error);
           }
+        } else {
+          // 8. 既にアタッチ済みの場合
+          console.log(`[AUTO_ATTACH] タブ${tabId}は既にアタッチ済みです`);
         }
+        
+        // 9. 通常の状態レスポンスを返す（autoAttached: falseで自動アタッチなしを示す）
         sendResponse({
           tabId,
           attached: !!tabState?.attached,
@@ -329,45 +347,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   })();
   return true;
 });
-
-/**
- * ブラウザ起動時の処理
- * 
- * ブラウザが起動された時に実行される処理です。
- * 保存されたエラー監視の状態を復元し、前回の設定を維持します。
- * 
- * 処理内容：
- * 1. Chromeストレージから保存された状態を読み込み
- * 2. タブごとのエラー情報とデバッグ状態を復元
- * 3. デバッグ状態はfalseにリセット（安全のため）
- * 
- * @example
- * // ブラウザを再起動すると自動実行される
- * // 前回のエラー情報が復元される
- */
-// chrome.runtime.onStartup.addListener(async () => {
-//     // 保存された状態を復元
-//     await chromeLoadState();
-//     console.log('ブラウザ再起動: 状態を復元しました');
-//   });
-
-/**
- * ブラウザ終了時の処理
- * 
- * ブラウザが終了される時に実行される処理です。
- * 現在のエラー監視の状態を保存し、次回起動時に復元できるようにします。
- * 
- * 処理内容：
- * 1. 現在のタブごとのエラー情報とデバッグ状態を保存
- * 2. セッション情報は除外（再起動時に無効になるため）
- * 
- * @example
- * // ブラウザを終了すると自動実行される
- * // 現在の状態が保存される
- */
-// chrome.runtime.onSuspend.addListener(async () => {
-//     // 現在の状態を保存
-//     await chromeSaveState();
-//     console.log('ブラウザ終了: 状態を保存しました');
-//   });
   

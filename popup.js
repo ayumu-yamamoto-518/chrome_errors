@@ -127,7 +127,24 @@ function send(type) {
 }
 
 /**
- * ポップアップの状態を最新に更新する
+ * ポップアップの状態を最新に更新し、必要に応じてデバッガーを自動アタッチする
+ * 
+ * この関数は以下の処理を順次実行します：
+ * 1. background scriptに「GET_STATE_AND_AUTO_ATTACH」メッセージを送信
+ * 2. background scriptが現在のタブの状態を確認
+ * 3. デバッガーがアタッチされていない場合は自動的にアタッチ
+ * 4. 最新のエラー情報とデバッグ状態を取得
+ * 5. UIを更新して最新の状態を表示
+ * 
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * // ポップアップが開かれた時に自動実行される
+ * refresh();
+ * 
+ * @example
+ * // 手動で状態を更新したい場合
+ * await refresh();
  */
 async function refresh() {
   const res = await send("GET_STATE_AND_AUTO_ATTACH");
