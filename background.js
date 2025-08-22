@@ -5,6 +5,46 @@ const CDP_VERSION = "1.3";
 const stateByTabId = new Map();
 
 /**
+ * 状態をChromeストレージに保存
+ */
+async function saveState() {
+  const stateToSave = {};
+  stateByTabId.forEach((state, tabId) => {
+    // セッション情報は保存しない（再起動時に無効になるため）
+    const { session, ...saveableState } = state;
+    stateToSave[tabId] = saveableState;
+  });
+  
+  await chrome.storage.local.set({ 
+    debuggerState: stateToSave,
+    lastSaved: Date.now()
+  });
+}
+
+/**
+ * 状態をChromeストレージから復元
+ */
+async function loadState() {
+  try {
+    const result = await chrome.storage.local.get(['debuggerState']);
+    const savedState = result.debuggerState || {};
+    
+    // 保存された状態を復元（attachedはfalseにリセット）
+    Object.entries(savedState).forEach(([tabId, state]) => {
+      stateByTabId.set(Number(tabId), {
+        ...state,
+        attached: false, // 再起動時はデタッチ状態
+        session: null
+      });
+    });
+    
+    console.log(`状態を復元しました: ${Object.keys(savedState).length}個のタブ`);
+  } catch (error) {
+    console.error('状態の復元に失敗しました:', error);
+  }
+}
+
+/**
  * タブの状態を取得または初期化
  * @param {number} tabId - タブID
  * @returns {Object} タブの状態オブジェクト
@@ -34,6 +74,9 @@ function setLatest(tabId, log) {
   const badgeText = st.errorCount > 0 ? String(st.errorCount) : "";
   chrome.action.setBadgeText({ tabId, text: badgeText });
   chrome.action.setBadgeBackgroundColor({ tabId, color: st.errorCount > 0 ? "#d00" : "#00000000" });
+  
+  // 状態を保存
+  saveState();
 }
 
 /**
@@ -68,6 +111,10 @@ async function attachToTab(tabId) {
     
     st.attached = true;
     st.session = target;
+    
+    // 状態を保存
+    saveState();
+    
     return { ok: true };
   } catch (e) {
     return { ok: false, error: chrome.runtime.lastError?.message || e?.message || String(e) };
@@ -90,6 +137,10 @@ async function detachFromTab(tabId) {
     // バッジをクリア
     chrome.action.setBadgeText({ tabId, text: "" });
     chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
+    
+    // 状態を保存
+    saveState();
+    
     return { ok: true };
   } catch (e) {
     return { ok: false, error: chrome.runtime.lastError?.message || e?.message || String(e) };
@@ -247,4 +298,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
   })();
   return true;
+});
+
+
+chrome.runtime.onStartup.addListener(async () => {
+  // 保存された状態を復元
+  await loadState();
+  console.log('ブラウザ再起動: 状態を復元しました');
 });
