@@ -218,16 +218,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
 
     switch (msg.type) {
-      // 現在のタブの状態を取得
-    //   case "GET_STATE_FOR_ACTIVE_TAB": {
-    //     const st = ensureTabState(tabId);
-    //     sendResponse({
-    //       tabId,
-    //       attached: !!st?.attached,
-    //       latest: st?.latest || null
-    //     });
-    //     break;
-    //   }
+
       // 状態を取得し、必要に応じてデバッグを自動開始
       case "GET_STATE_AND_AUTO_ATTACH": {
         const st = ensureTabState(tabId);
