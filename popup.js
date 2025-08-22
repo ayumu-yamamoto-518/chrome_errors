@@ -39,7 +39,7 @@ function render(state) {
     return;
   }
   
-  status.textContent = state.attached ? "デバッグ中" : "停止中";
+//   status.textContent = state.attached ? "デバッグ中" : "停止中";
 
   const log = state.latest;
   if (!log) {
