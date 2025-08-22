@@ -7,7 +7,7 @@ const stateByTabId = new Map();
 /**
  * 状態をChromeストレージに保存
  */
-async function saveState() {
+async function chromeSaveState() {
   const stateToSave = {};
   stateByTabId.forEach((state, tabId) => {
     // セッション情報は保存しない（再起動時に無効になるため）
@@ -24,7 +24,7 @@ async function saveState() {
 /**
  * 状態をChromeストレージから復元
  */
-async function loadState() {
+async function chromeLoadState() {
   try {
     const result = await chrome.storage.local.get(['debuggerState']);
     const savedState = result.debuggerState || {};
@@ -75,8 +75,8 @@ function setLatest(tabId, log) {
   chrome.action.setBadgeText({ tabId, text: badgeText });
   chrome.action.setBadgeBackgroundColor({ tabId, color: st.errorCount > 0 ? "#d00" : "#00000000" });
   
-  // 状態を保存
-  saveState();
+  // Chromeストレージに状態を保存
+  chromeSaveState();
 }
 
 /**
@@ -112,8 +112,8 @@ async function attachToTab(tabId) {
     st.attached = true;
     st.session = target;
     
-    // 状態を保存
-    saveState();
+    // Chromeストレージに状態を保存
+    chromeSaveState();
     
     return { ok: true };
   } catch (e) {
