@@ -136,8 +136,8 @@ async function refresh() {
 
 // ====== イベント処理 ======
 
-// プロンプトエリアの内容をコピー
-document.getElementById("copyPrompt").addEventListener("click", async () => {
+// コピーアイコンのクリックイベント
+document.getElementById("copyIcon").addEventListener("click", async () => {
   await copyText(promptArea.value);
 });
 
