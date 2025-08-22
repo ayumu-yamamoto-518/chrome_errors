@@ -35,46 +35,59 @@ function escapeHtml(s) {
 
 /**
  * UIを状態に応じて更新
+ * 
+ * @param {Object} state - デバッグ状態
+ * @param {number|null} state.tabId - タブID
+ * @param {boolean} state.attached - デバッガーがアタッチされているか
+ * @param {Object|null} state.latest - 最新のエラー情報
  */
 function render(state) {
-  currentState = state || { tabId: null, attached: false, latest: null };
-  const latestEl = document.getElementById("latest");
-  const status = document.getElementById("status");
+  try {
+    currentState = state || { tabId: null, attached: false, latest: null };
+    const latestEl = document.getElementById("latest");
+    const status = document.getElementById("status");
 
-  if (!state || state.tabId == null) {
-    status.textContent = "タブなし";
-    latestEl.innerHTML = "";
-    return;
-  }
-  
-//   status.textContent = state.attached ? "デバッグ中" : "停止中";
+    if (!state || state.tabId == null) {
+      status.textContent = "タブなし";
+      latestEl.innerHTML = "";
+      return;
+    }
+    
+    // デバッグ状態を表示（オプション）
+    // status.textContent = state.attached ? "デバッグ中" : "停止中";
 
-  const log = state.latest;
-  if (!log) {
-    latestEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
-    // promptAreaもクリア
-    promptArea.value = "以下の、エラーを解析してほしい";
-    return;
-  }
+    const log = state.latest;
+    if (!log) {
+      latestEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
+      // promptAreaもクリア
+      promptArea.value = "以下の、エラーを解析してほしい";
+      return;
+    }
 
-  const src = log.source || "";
-  const meta = [log.url, log.line != null ? `L${log.line}` : "", fmtTs(log.ts)]
-    .filter(Boolean).join(" | ");
+    const src = log.source || "";
+    const meta = [log.url, log.line != null ? `L${log.line}` : "", fmtTs(log.ts)]
+      .filter(Boolean).join(" | ");
 
-  latestEl.innerHTML = `
-    <div class="log">
-      <div class="head">
-        ${pill(log.level)}
-        <div>${escapeHtml(src)}</div>
-        <div class="src">${escapeHtml(meta)}</div>
+    latestEl.innerHTML = `
+      <div class="log">
+        <div class="head">
+          ${pill(log.level)}
+          <div>${escapeHtml(src)}</div>
+          <div class="src">${escapeHtml(meta)}</div>
+        </div>
+        <div class="msg">${escapeHtml(log.text || "(no message)")}</div>
+        ${log.stack ? `<details><summary>stack</summary><pre>${escapeHtml(String(log.stack))}</pre></details>` : ""}
       </div>
-      <div class="msg">${escapeHtml(log.text || "(no message)")}</div>
-      ${log.stack ? `<details><summary>stack</summary><pre>${escapeHtml(String(log.stack))}</pre></details>` : ""}
-    </div>
-  `;
+    `;
 
-  // promptAreaに最新エラーを自動反映
-  promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
+    // promptAreaに最新エラーを自動反映
+    promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
+  } catch (error) {
+    console.error('UIの更新に失敗しました:', error);
+    // エラー時は空の状態を表示
+    const latestEl = document.getElementById("latest");
+    latestEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
+  }
 }
 
 /**
@@ -119,6 +132,9 @@ function appendToEditor(text) {
 
 /**
  * background scriptにメッセージを送信
+ * 
+ * @param {string} type - メッセージタイプ
+ * @returns {Promise<Object>} レスポンス
  */
 function send(type) {
   return new Promise((resolve) => {
@@ -127,21 +143,88 @@ function send(type) {
 }
 
 /**
- * ポップアップの状態を最新に更新し、必要に応じてデバッガーを自動アタッチする
- *
+ * 現在のデバッグ状態を取得
+ * 
+ * @returns {Promise<Object>} デバッグ状態
+ */
+async function getDebugState() {
+  return await send("GET_DEBUG_STATE");
+}
+
+/**
+ * デバッガーをアタッチ
+ * 
+ * @returns {Promise<Object>} アタッチ結果
+ */
+async function attachDebugger() {
+  return await send("ATTACH_DEBUGGER");
+}
+
+/**
+ * デバッガーをデタッチ
+ * 
+ * @returns {Promise<Object>} デタッチ結果
+ */
+async function detachDebugger() {
+  return await send("DETACH_DEBUGGER");
+}
+
+/**
+ * デバッグモードを切り替え
+ * 
+ * @returns {Promise<Object>} 切り替え結果
+ */
+async function toggleDebugMode() {
+  return await send("TOGGLE_DEBUG_MODE");
+}
+
+/**
+ * ポップアップの状態を更新
+ * 
+ * 現在のデバッグ状態を取得し、UIを更新します。
+ * 
+ * @returns {Promise<void>}
+ */
+async function updatePopupState() {
+  try {
+    const state = await getDebugState();
+    render(state);
+  } catch (error) {
+    console.error('状態の取得に失敗しました:', error);
+    render({ tabId: null, attached: false, latest: null });
+  }
+}
+
+/**
+ * デバッグモードを切り替え、ポップアップの状態を更新する
+ * 
+ * この関数は以下の処理を順次実行します：
+ * 1. デバッグモードを切り替え
+ * 2. 最新の状態を取得
+ * 3. UIを更新
+ * 
  * @returns {Promise<void>}
  * 
  * @example
  * // ポップアップが開かれた時に自動実行される
- * refresh();
+ * handleDebugModeToggle();
  * 
  * @example
- * // 手動で状態を更新したい場合
- * await refresh();
+ * // 手動でデバッグモードを切り替えたい場合
+ * await handleDebugModeToggle();
  */
-async function refresh() {
-  const res = await send("GET_STATE_AND_AUTO_ATTACH");
-  render(res);
+async function handleDebugModeToggle() {
+  try {
+    const result = await toggleDebugMode();
+    console.log(result.message); // 切り替え結果をログ出力
+    
+    // 最新の状態を取得してUIを更新
+    await updatePopupState();
+  } catch (error) {
+    console.error('デバッグモードの切り替えに失敗しました:', error);
+    // エラー時は現在の状態を表示
+    await updatePopupState();
+  }
 }
 
 // ====== イベント処理 ======
@@ -155,4 +238,4 @@ document.getElementById("copyIcon").addEventListener("click", async () => {
 const promptArea = document.getElementById("promptArea");
 
 // ====== 初期化 ======
-refresh();
+handleDebugModeToggle();
