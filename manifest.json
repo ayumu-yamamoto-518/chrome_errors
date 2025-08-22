@@ -4,9 +4,13 @@
     "version": "1.0.0",
     "description": "chrome.debugger で DevTools 相当のログを購読し、最新1件のエラーのみをポップアップで扱う",
     "permissions": ["debugger", "tabs", "storage"],
+    "icons": {
+      "19": "img/error_19.png"
+    },
     "action": {
       "default_title": "CDP Errors",
-      "default_popup": "popup.html"
+      "default_popup": "popup.html",
+      "default_icon": "img/error_19.png"
     },
     "background": {
       "service_worker": "background.js"

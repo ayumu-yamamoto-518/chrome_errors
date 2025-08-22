@@ -26,34 +26,7 @@ button {
   cursor: pointer; 
 }
 
-/* プロンプト操作ボタン（青色で統一） */
-#insertLatest, #copyPrompt {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-#insertLatest:hover, #copyPrompt:hover {
-  background-color: #0056b3;
-  border-color: #004085;
-}
-
-/* ====== ステータス表示 ====== */
-
-/* ステータスバッジ（デバッグ中/停止中） */
-.badge { 
-  font-weight: 600; 
-}
-
 /* ====== エラーログ表示 ====== */
-
-/* ボタンバー（最新エラーをコピー、最新エラーを挿入） */
-.bar { 
-  display: flex; 
-  gap: 8px; 
-  align-items: center; 
-  margin: 8px 0; 
-}
 
 /* エラーログのコンテナ */
 .log { 
@@ -117,6 +90,13 @@ button {
 
 /* ====== プロンプトエリア ====== */
 
+/* テキストエリアコンテナ */
+.textarea-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
 /* テキストエリア（AIに投げる内容） */
 textarea { 
   width: 100%; 
@@ -124,6 +104,33 @@ textarea {
   border-radius: 8px; 
   padding: 8px; 
   border: 1px solid #ddd; 
+  padding-right: 40px; /* コピーアイコンのスペース */
+}
+
+/* コピーアイコン */
+.copy-icon {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  background: white;
+  border-radius: 4px;
+  padding: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  filter: brightness(0) saturate(100%); /* 黒色に変更 */
+}
+
+.copy-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.copy-icon:active {
+  transform: scale(0.95);
 }
 
 /* 小さなテキスト（説明文） */

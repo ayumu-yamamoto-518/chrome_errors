@@ -1,4 +1,12 @@
 // ====== 状態管理 ======
+/**
+ * 現在のポップアップで表示しているタブの状態
+ * 
+ * @type {Object}
+ * @property {number|null} tabId - 現在のタブID（nullの場合はタブなし）
+ * @property {boolean} attached - デバッガーがアタッチされているか
+ * @property {Object|null} latest - 最新のエラー情報（nullの場合はエラーなし）
+ */
 let currentState = { tabId: null, attached: false, latest: null };
 
 // ====== UI操作 ======
@@ -119,7 +127,7 @@ function send(type) {
 }
 
 /**
- * 現在の状態を取得してUIを更新
+ * ポップアップの状態を最新に更新する
  */
 async function refresh() {
   const res = await send("GET_STATE_AND_AUTO_ATTACH");
@@ -128,8 +136,8 @@ async function refresh() {
 
 // ====== イベント処理 ======
 
-// プロンプトエリアの内容をコピー
-document.getElementById("copyPrompt").addEventListener("click", async () => {
+// コピーアイコンのクリックイベント
+document.getElementById("copyIcon").addEventListener("click", async () => {
   await copyText(promptArea.value);
 });
 
