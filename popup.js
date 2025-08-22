@@ -44,6 +44,8 @@ function render(state) {
   const log = state.latest;
   if (!log) {
     latestEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
+    // promptAreaもクリア
+    promptArea.value = "以下の、エラーを解析してほしい";
     return;
   }
 
@@ -62,6 +64,9 @@ function render(state) {
       ${log.stack ? `<details><summary>stack</summary><pre>${escapeHtml(String(log.stack))}</pre></details>` : ""}
     </div>
   `;
+
+  // promptAreaに最新エラーを自動反映
+  promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
 }
 
 /**
