@@ -345,9 +345,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
  * // ブラウザを再起動すると自動実行される
  * // 前回のエラー情報が復元される
  */
-chrome.runtime.onStartup.addListener(async () => {
-    // 保存された状態を復元
-    await chromeLoadState();
-    console.log('ブラウザ再起動: 状態を復元しました');
-  });
+// chrome.runtime.onStartup.addListener(async () => {
+//     // 保存された状態を復元
+//     await chromeLoadState();
+//     console.log('ブラウザ再起動: 状態を復元しました');
+//   });
+
+/**
+ * ブラウザ終了時の処理
+ * 
+ * ブラウザが終了される時に実行される処理です。
+ * 現在のエラー監視の状態を保存し、次回起動時に復元できるようにします。
+ * 
+ * 処理内容：
+ * 1. 現在のタブごとのエラー情報とデバッグ状態を保存
+ * 2. セッション情報は除外（再起動時に無効になるため）
+ * 
+ * @example
+ * // ブラウザを終了すると自動実行される
+ * // 現在の状態が保存される
+ */
+// chrome.runtime.onSuspend.addListener(async () => {
+//     // 現在の状態を保存
+//     await chromeSaveState();
+//     console.log('ブラウザ終了: 状態を保存しました');
+//   });
   
