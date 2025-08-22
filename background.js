@@ -211,8 +211,8 @@ async function detachFromTab(tabId) {
     tabState.attached = false;
     tabState.session = null;
     
-    // バッジ状態をクリア
-    clearBadgeState(tabId);
+    // バッジ状態の自動クリアを無効化 - エラーカウントは保持
+    // clearBadgeState(tabId);
     
     // ストレージ状態を保存
     chromeSaveState();
@@ -325,13 +325,17 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 /**
  * タブが更新された時の処理（ページ読み込み時にエラーカウントをリセット）
+ * 
+ * 注意：自動リセットは無効化されています
+ * ユーザーが手動でリセットするまで、エラーカウントは保持されます
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
-    // エラーカウントをリセット
-    resetTabErrorCount(tabId);
-    // バッジ状態をクリア
-    clearBadgeState(tabId);
+    // 自動リセットを無効化 - ユーザーが手動でリセットするまで保持
+    // resetTabErrorCount(tabId);
+    // clearBadgeState(tabId);
+    
+    console.log(`Tab ${tabId} updated - keeping error count`);
   }
 });
 
@@ -540,6 +544,41 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({
           ...getPopupState(tabId),
           message: "デバッグモードの切り替えに失敗しました"
+        });
+        break;
+      }
+
+      /**
+       * エラーカウントを表示
+       * 
+       * ポップアップが表示された時に呼び出され、エラーカウントを表示します。
+       * 
+       * @param {number} tabId - 対象のタブID
+       * @returns {Object} 処理結果
+       */
+      case "SHOW_ERROR_COUNT": {
+        const tabState = ensureTabState(tabId);
+        updateBadgeState(tabId, tabState.errorCount);
+        sendResponse({
+          ...getPopupState(tabId),
+          message: "エラーカウントを表示しました"
+        });
+        break;
+      }
+
+      /**
+       * エラーカウントを非表示
+       * 
+       * ポップアップが非表示になった時に呼び出され、エラーカウントを非表示にします。
+       * 
+       * @param {number} tabId - 対象のタブID
+       * @returns {Object} 処理結果
+       */
+      case "HIDE_ERROR_COUNT": {
+        clearBadgeState(tabId);
+        sendResponse({
+          ...getPopupState(tabId),
+          message: "エラーカウントを非表示にしました"
         });
         break;
       }
