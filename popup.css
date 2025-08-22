@@ -26,34 +26,7 @@ button {
   cursor: pointer; 
 }
 
-/* プロンプト操作ボタン（青色で統一） */
-#insertLatest, #copyPrompt {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-#insertLatest:hover, #copyPrompt:hover {
-  background-color: #0056b3;
-  border-color: #004085;
-}
-
-/* ====== ステータス表示 ====== */
-
-/* ステータスバッジ（デバッグ中/停止中） */
-.badge { 
-  font-weight: 600; 
-}
-
 /* ====== エラーログ表示 ====== */
-
-/* ボタンバー（最新エラーをコピー、最新エラーを挿入） */
-.bar { 
-  display: flex; 
-  gap: 8px; 
-  align-items: center; 
-  margin: 8px 0; 
-}
 
 /* エラーログのコンテナ */
 .log { 
