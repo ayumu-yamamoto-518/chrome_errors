@@ -123,13 +123,6 @@ async function refresh() {
 
 // ====== イベント処理 ======
 
-// 最新エラーをプロンプトエリアに挿入
-document.getElementById("insertLatest").addEventListener("click", () => {
-  const log = currentState.latest;
-  if (!log) return alert("挿入できるエラーがありません");
-  appendToEditor(formatLog(log));
-});
-
 // プロンプトエリアの内容をコピー
 document.getElementById("copyPrompt").addEventListener("click", async () => {
   await copyText(promptArea.value);
