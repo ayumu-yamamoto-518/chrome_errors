@@ -388,6 +388,62 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 // ====== メッセージ通信 ======
 
 /**
+ * ポップアップからのメッセージを処理
+ * 
+ * ポップアップ（popup.js）から送信されるメッセージを受信し、
+ * デバッグモードの制御や状態取得を行います。
+ * 
+ * 対応するメッセージタイプ：
+ * - GET_DEBUG_STATE: 現在のデバッグ状態を取得
+ * - ATTACH_DEBUGGER: デバッガーをアタッチ
+ * - DETACH_DEBUGGER: デバッガーをデタッチ
+ * - TOGGLE_DEBUG_MODE: デバッグモードのON/OFF切り替え
+ * - SHOW_ERROR_COUNT: エラーカウントを表示
+ * - HIDE_ERROR_COUNT: エラーカウントを非表示
+ * 
+ * @param {Object} msg - 受信したメッセージ
+ * @param {string} msg.type - メッセージタイプ
+ * @param {Object} _sender - 送信者情報（未使用）
+ * @param {Function} sendResponse - レスポンス送信関数
+ * @returns {boolean} true - 非同期レスポンスを示す
+ */
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    (async () => {
+      if (!msg || !msg.type) return;
+  
+      const tabId = await getActiveTabId();
+      if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
+  
+      switch (msg.type) {
+        case "GET_DEBUG_STATE":
+          handleGetDebugState(tabId, sendResponse);
+          break;
+  
+        case "ATTACH_DEBUGGER":
+          await handleAttachDebugger(tabId, sendResponse);
+          break;
+  
+        case "DETACH_DEBUGGER":
+          await handleDetachDebugger(tabId, sendResponse);
+          break;
+  
+        case "TOGGLE_DEBUG_MODE":
+          await handleToggleDebugMode(tabId, sendResponse);
+          break;
+  
+        case "SHOW_ERROR_COUNT":
+          handleShowErrorCount(tabId, sendResponse);
+          break;
+  
+        case "HIDE_ERROR_COUNT":
+          handleHideErrorCount(tabId, sendResponse);
+          break;
+      }
+    })();
+    return true;
+  });
+
+/**
  * デバッグ状態取得の処理
  * 
  * @param {number} tabId - タブID
@@ -532,62 +588,6 @@ function handleHideErrorCount(tabId, sendResponse) {
     message: "エラーカウントを非表示にしました"
   });
 }
-
-/**
- * ポップアップからのメッセージを処理
- * 
- * ポップアップ（popup.js）から送信されるメッセージを受信し、
- * デバッグモードの制御や状態取得を行います。
- * 
- * 対応するメッセージタイプ：
- * - GET_DEBUG_STATE: 現在のデバッグ状態を取得
- * - ATTACH_DEBUGGER: デバッガーをアタッチ
- * - DETACH_DEBUGGER: デバッガーをデタッチ
- * - TOGGLE_DEBUG_MODE: デバッグモードのON/OFF切り替え
- * - SHOW_ERROR_COUNT: エラーカウントを表示
- * - HIDE_ERROR_COUNT: エラーカウントを非表示
- * 
- * @param {Object} msg - 受信したメッセージ
- * @param {string} msg.type - メッセージタイプ
- * @param {Object} _sender - 送信者情報（未使用）
- * @param {Function} sendResponse - レスポンス送信関数
- * @returns {boolean} true - 非同期レスポンスを示す
- */
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  (async () => {
-    if (!msg || !msg.type) return;
-
-    const tabId = await getActiveTabId();
-    if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
-
-    switch (msg.type) {
-      case "GET_DEBUG_STATE":
-        handleGetDebugState(tabId, sendResponse);
-        break;
-
-      case "ATTACH_DEBUGGER":
-        await handleAttachDebugger(tabId, sendResponse);
-        break;
-
-      case "DETACH_DEBUGGER":
-        await handleDetachDebugger(tabId, sendResponse);
-        break;
-
-      case "TOGGLE_DEBUG_MODE":
-        await handleToggleDebugMode(tabId, sendResponse);
-        break;
-
-      case "SHOW_ERROR_COUNT":
-        handleShowErrorCount(tabId, sendResponse);
-        break;
-
-      case "HIDE_ERROR_COUNT":
-        handleHideErrorCount(tabId, sendResponse);
-        break;
-    }
-  })();
-  return true;
-});
 
 // ====== 初期化 ======
 chromeLoadState();
