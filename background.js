@@ -7,7 +7,7 @@ const CDP_VERSION = "1.3";
 const stateByTabId = new Map();
 
 /**
- * タブの状態を取得する。存在しない場合は初期状態を作成する
+ * タブの状態を取得または初期化する
  * 
  * @param {number} tabId - 対象のタブID
  * @returns {Object} タブの状態オブジェクト
@@ -16,7 +16,7 @@ const stateByTabId = new Map();
  *   - session: Object|null - CDPデバッガーセッション
  *   - errorCount: number - エラーの累計数
  */
-function ensureTabState(tabId) {
+function getOrCreateTabState(tabId) {
   if (!stateByTabId.has(tabId)) {
     stateByTabId.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
   }
@@ -36,7 +36,7 @@ function removeTabState(tabId) {
  * @param {number} tabId - タブID
  */
 function resetTabErrorCount(tabId) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   tabState.errorCount = 0;
 }
 
@@ -47,7 +47,7 @@ function resetTabErrorCount(tabId) {
  * @param {Object} log - ログ情報（level, source, text, url, line, column）
  */
 function setLatest(tabId, log) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   
   // エラー情報を更新
   tabState.latest = { ...log, ts: Date.now() };
@@ -69,7 +69,7 @@ function setLatest(tabId, log) {
  * @param {number} tabId - タブID
  */
 function clearLatestError(tabId) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   tabState.latest = null;
   chromeSaveState();
 }
@@ -81,7 +81,7 @@ function clearLatestError(tabId) {
  * @returns {Object} ポップアップ状態
  */
 function getPopupState(tabId) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   return {
     tabId,
     attached: !!tabState?.attached,
@@ -169,7 +169,7 @@ async function getActiveTabId() {
  * @returns {Promise<Object>} 結果オブジェクト
  */
 async function attachToTab(tabId) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   if (tabState.attached) return { ok: true };
 
   try {
@@ -201,7 +201,7 @@ async function attachToTab(tabId) {
  * @returns {Promise<Object>} 結果オブジェクト
  */
 async function detachFromTab(tabId) {
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   if (!tabState.attached || !tabState.session) return { ok: true };
   
   try {
@@ -306,7 +306,7 @@ chrome.debugger.onDetach.addListener((source, reason) => {
   if (!tabId) return;
   
   // タブ状態を更新
-  const tabState = ensureTabState(tabId);
+  const tabState = getOrCreateTabState(tabId);
   tabState.attached = false;
   tabState.session = null;
 });
@@ -414,7 +414,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * }
        */
       case "ATTACH_DEBUGGER": {
-        const tabState = ensureTabState(tabId);
+        const tabState = getOrCreateTabState(tabId);
         
         // 既にアタッチされている場合は何もしない
         if (tabState.attached) {
@@ -465,7 +465,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * }
        */
       case "DETACH_DEBUGGER": {
-        const tabState = ensureTabState(tabId);
+        const tabState = getOrCreateTabState(tabId);
         
         // 既にデタッチされている場合は何もしない
         if (!tabState.attached) {
@@ -516,7 +516,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * console.log(result.message); // "デバッグモードをONにしました" または "デバッグモードをOFFにしました"
        */
       case "TOGGLE_DEBUG_MODE": {
-        const tabState = ensureTabState(tabId);
+        const tabState = getOrCreateTabState(tabId);
         
         if (!tabState.attached) {
           // デバッグモードがOFFの場合 → ONにする
@@ -557,7 +557,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * @returns {Object} 処理結果
        */
       case "SHOW_ERROR_COUNT": {
-        const tabState = ensureTabState(tabId);
+        const tabState = getOrCreateTabState(tabId);
         updateBadgeState(tabId, tabState.errorCount);
         sendResponse({
           ...getPopupState(tabId),
