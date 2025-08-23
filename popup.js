@@ -106,6 +106,78 @@ async function toggleDebugMode() {
 // ====== UI更新処理 ======
 
 /**
+ * エラー情報の表示をクリア
+ */
+function clearErrorDisplay() {
+  const newErrorInfoEl = document.getElementById("newErrorInfo");
+  if (newErrorInfoEl) {
+    newErrorInfoEl.innerHTML = "";
+  }
+}
+
+/**
+ * エラーなし状態を表示
+ */
+function showNoErrorState() {
+  const newErrorInfoEl = document.getElementById("newErrorInfo");
+  if (newErrorInfoEl) {
+    newErrorInfoEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
+  }
+  
+  // promptAreaもクリア
+  if (promptArea) {
+    promptArea.value = "以下の、エラーを解析してほしい";
+  }
+}
+
+/**
+ * エラー詳細を表示
+ * 
+ * @param {Object} log - エラー情報
+ */
+function showErrorDetails(log) {
+  const newErrorInfoEl = document.getElementById("newErrorInfo");
+  if (!newErrorInfoEl) return;
+
+  const src = log.source || "";
+  const meta = [log.url, log.line != null ? `L${log.line}` : "", formatTimestamp(log.ts)]
+    .filter(Boolean).join(" | ");
+
+  newErrorInfoEl.innerHTML = `
+    <div class="log">
+      <div class="head">
+        ${createLevelBadge(log.level)}
+        <div>${escapeHtml(src)}</div>
+        <div class="src">${escapeHtml(meta)}</div>
+      </div>
+      <div class="msg">${escapeHtml(log.text || "(no message)")}</div>
+      ${log.stack ? `<details><summary>stack</summary><pre>${escapeHtml(String(log.stack))}</pre></details>` : ""}
+    </div>
+  `;
+}
+
+/**
+ * プロンプトエリアを更新
+ * 
+ * @param {Object} log - エラー情報
+ */
+function updatePromptArea(log) {
+  if (promptArea) {
+    promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
+  }
+}
+
+/**
+ * エラー状態を表示
+ */
+function showErrorState() {
+  const newErrorInfoEl = document.getElementById("newErrorInfo");
+  if (newErrorInfoEl) {
+    newErrorInfoEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
+  }
+}
+
+/**
  * UIを状態に応じて更新
  * 
  * @param {Object} state - デバッグ状態
@@ -113,58 +185,40 @@ async function toggleDebugMode() {
  * @param {boolean} state.attached - デバッガーがアタッチされているか
  * @param {Object|null} state.newErrorInfo - 最新のエラー情報
  */
-function render(state) {
+function updateUI(state) {
   try {
+    // 状態を更新
     currentState = state || { tabId: null, attached: false, newErrorInfo: null };
+    
+    // DOM要素の存在確認
     const newErrorInfoEl = document.getElementById("newErrorInfo");
-
     if (!newErrorInfoEl) {
       console.error('newErrorInfo element not found');
       return;
     }
 
+    // 状態の検証
     if (!state || state.tabId == null) {
-      newErrorInfoEl.innerHTML = "";
+      clearErrorDisplay();
       return;
     }
 
+    // エラー情報の表示
     const log = state.newErrorInfo;
     if (!log) {
-      newErrorInfoEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
-      // promptAreaもクリア
-      if (promptArea) {
-        promptArea.value = "以下の、エラーを解析してほしい";
-      }
+      showNoErrorState();
       return;
     }
 
-    const src = log.source || "";
-    const meta = [log.url, log.line != null ? `L${log.line}` : "", formatTimestamp(log.ts)]
-      .filter(Boolean).join(" | ");
-
-    newErrorInfoEl.innerHTML = `
-      <div class="log">
-        <div class="head">
-          ${createLevelBadge(log.level)}
-          <div>${escapeHtml(src)}</div>
-          <div class="src">${escapeHtml(meta)}</div>
-        </div>
-        <div class="msg">${escapeHtml(log.text || "(no message)")}</div>
-        ${log.stack ? `<details><summary>stack</summary><pre>${escapeHtml(String(log.stack))}</pre></details>` : ""}
-      </div>
-    `;
-
-    // promptAreaに最新エラーを自動反映
-    if (promptArea) {
-      promptArea.value = `以下の、エラーを解析してほしい\n\n${formatLog(log)}`;
-    }
+    // エラー詳細の表示
+    showErrorDetails(log);
+    
+    // プロンプトエリアの更新
+    updatePromptArea(log);
+    
   } catch (error) {
     console.error('UIの更新に失敗しました:', error);
-    // エラー時は空の状態を表示
-    const newErrorInfoEl = document.getElementById("newErrorInfo");
-    if (newErrorInfoEl) {
-      newErrorInfoEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
-    }
+    showErrorState();
   }
 }
 
@@ -178,10 +232,10 @@ function render(state) {
 async function updatePopupState() {
   try {
     const state = await getDebugState();
-    render(state);
+    updateUI(state);
   } catch (error) {
     console.error('状態の取得に失敗しました:', error);
-    render({ tabId: null, attached: false, newErrorInfo: null });
+    updateUI({ tabId: null, attached: false, newErrorInfo: null });
   }
 }
 
