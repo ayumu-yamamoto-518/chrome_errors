@@ -3,24 +3,36 @@ const CDP_VERSION = "1.3";
 
 // ====== 状態管理 ======
 
-// 1. タブ状態管理（Tab State Management）
-const stateByTabId = new Map();
+// ====== タブ状態管理（Tab State Management） ======
+
+/**
+ * タブIDをキーとして使用する
+ * タブの状態を値として保存する
+ */
+const tabStates = new Map();
 
 /**
  * タブの状態を取得または初期化する
  * 
+ * この関数を作った理由：
+ * 1. 状態の一貫性を保つ - どのタブでも同じ形式の状態オブジェクトを使用
+ * 2. エラーの防止 - undefinedやnullによるエラーを防ぐ
+ * 3. 安全なプロパティアクセス - 存在しないタブでも安全に状態を取得
+ * 4. 初期化の自動化 - 新しいタブの状態を自動的に初期化
+ * 5. コードの簡潔性 - 毎回の存在チェックを省略できる
+ * 
  * @param {number} tabId - 対象のタブID
  * @returns {Object} タブの状態オブジェクト
- *   - attached: boolean - デバッガーがアタッチされているか
+ *   - attached: boolean - デバッガーがアタッチ/デタッチされているか
  *   - latest: Object|null - 最新のエラー情報
  *   - session: Object|null - CDPデバッガーセッション
  *   - errorCount: number - エラーの累計数
  */
 function getOrCreateTabState(tabId) {
-  if (!stateByTabId.has(tabId)) {
-    stateByTabId.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
+  if (!tabStates.has(tabId)) {
+    tabStates.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
   }
-  return stateByTabId.get(tabId);
+  return tabStates.get(tabId);
 }
 
 /**
@@ -28,7 +40,7 @@ function getOrCreateTabState(tabId) {
  * @param {number} tabId - タブID
  */
 function removeTabState(tabId) {
-  stateByTabId.delete(tabId);
+  tabStates.delete(tabId);
 }
 
 /**
@@ -95,7 +107,7 @@ function getPopupState(tabId) {
  */
 async function chromeSaveState() {
   const stateToSave = {};
-  stateByTabId.forEach((state, tabId) => {
+  tabStates.forEach((state, tabId) => {
     // セッション情報は保存しない（再起動時に無効になるため）
     const { session, ...saveableState } = state;
     stateToSave[tabId] = saveableState;
@@ -117,7 +129,7 @@ async function chromeLoadState() {
     
     // 保存された状態を復元（attachedはfalseにリセット）
     Object.entries(savedState).forEach(([tabId, state]) => {
-      stateByTabId.set(Number(tabId), {
+      tabStates.set(Number(tabId), {
         ...state,
         attached: false, // 再起動時はデタッチ状態
         session: null
@@ -315,7 +327,7 @@ chrome.debugger.onDetach.addListener((source, reason) => {
  * タブが削除された時の処理
  */
 chrome.tabs.onRemoved.addListener((tabId) => {
-  const st = stateByTabId.get(tabId);
+  const st = tabStates.get(tabId);
   if (st?.attached && st.session) {
     chrome.debugger.detach(st.session).catch(() => {});
   }
