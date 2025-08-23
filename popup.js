@@ -17,7 +17,7 @@ if (!promptArea) {
   console.error('promptArea element not found');
 }
 
-// ====== UI操作 ======
+// ====== ユーティリティ関数 ======
 
 /**
  * タイムスタンプをローカル時間形式に変換
@@ -40,6 +40,70 @@ function createLevelBadge(level) {
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+/**
+ * ログをテキスト形式にフォーマット
+ */
+function formatLog(log) {
+  const head = `[${(log.level || "info").toUpperCase()}][${log.source || "log"}] ${log.text || "(no message)"}`;
+  const meta = [log.url, log.line != null ? `L${log.line}` : "", log.ts ? new Date(log.ts).toISOString() : ""]
+    .filter(Boolean).join(" | ");
+  const metaLine = meta ? `\nmeta: ${meta}` : "";
+  const stack = log.stack ? `\nstack: ${String(log.stack)}` : "";
+  return `${head}${metaLine}${stack}`;
+}
+
+// ====== 通信処理 ======
+
+/**
+ * background scriptにメッセージを送信
+ * 
+ * @param {string} type - メッセージタイプ
+ * @returns {Promise<Object>} レスポンス
+ */
+function send(type) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type }, (res) => resolve(res));
+  });
+}
+
+/**
+ * 現在のデバッグ状態を取得
+ * 
+ * @returns {Promise<Object>} デバッグ状態
+ */
+async function getDebugState() {
+  return await send("GET_DEBUG_STATE");
+}
+
+/**
+ * デバッガーをアタッチ
+ * 
+ * @returns {Promise<Object>} アタッチ結果
+ */
+async function attachDebugger() {
+  return await send("ATTACH_DEBUGGER");
+}
+
+/**
+ * デバッガーをデタッチ
+ * 
+ * @returns {Promise<Object>} デタッチ結果
+ */
+async function detachDebugger() {
+  return await send("DETACH_DEBUGGER");
+}
+
+/**
+ * デバッグモードを切り替え
+ * 
+ * @returns {Promise<Object>} 切り替え結果
+ */
+async function toggleDebugMode() {
+  return await send("TOGGLE_DEBUG_MODE");
+}
+
+// ====== UI更新処理 ======
 
 /**
  * UIを状態に応じて更新
@@ -105,16 +169,23 @@ function render(state) {
 }
 
 /**
- * ログをテキスト形式にフォーマット
+ * ポップアップの状態を更新
+ * 
+ * 現在のデバッグ状態を取得し、UIを更新します。
+ * 
+ * @returns {Promise<void>}
  */
-function formatLog(log) {
-  const head = `[${(log.level || "info").toUpperCase()}][${log.source || "log"}] ${log.text || "(no message)"}`;
-  const meta = [log.url, log.line != null ? `L${log.line}` : "", log.ts ? new Date(log.ts).toISOString() : ""]
-    .filter(Boolean).join(" | ");
-  const metaLine = meta ? `\nmeta: ${meta}` : "";
-  const stack = log.stack ? `\nstack: ${String(log.stack)}` : "";
-  return `${head}${metaLine}${stack}`;
+async function updatePopupState() {
+  try {
+    const state = await getDebugState();
+    render(state);
+  } catch (error) {
+    console.error('状態の取得に失敗しました:', error);
+    render({ tabId: null, attached: false, newErrorInfo: null });
+  }
 }
+
+// ====== イベント処理 ======
 
 /**
  * テキストをクリップボードにコピー
@@ -144,73 +215,6 @@ function appendToEditor(text) {
   }
   const cur = promptArea.value || "";
   promptArea.value = cur + (cur.endsWith("\n") ? "" : "\n") + text + "\n";
-}
-
-// ====== 通信 ======
-
-/**
- * background scriptにメッセージを送信
- * 
- * @param {string} type - メッセージタイプ
- * @returns {Promise<Object>} レスポンス
- */
-function send(type) {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type }, (res) => resolve(res));
-  });
-}
-
-/**
- * 現在のデバッグ状態を取得
- * 
- * @returns {Promise<Object>} デバッグ状態
- */
-async function getDebugState() {
-  return await send("GET_DEBUG_STATE");
-}
-
-/**
- * デバッガーをアタッチ
- * 
- * @returns {Promise<Object>} アタッチ結果
- */
-async function attachDebugger() {
-  return await send("ATTACH_DEBUGGER");
-}
-
-/**
- * デバッガーをデタッチ
- * 
- * @returns {Promise<Object>} デタッチ結果
- */
-async function detachDebugger() {
-  return await send("DETACH_DEBUGGER");
-}
-
-/**
- * デバッグモードを切り替え
- * 
- * @returns {Promise<Object>} 切り替え結果
- */
-async function toggleDebugMode() {
-  return await send("TOGGLE_DEBUG_MODE");
-}
-
-/**
- * ポップアップの状態を更新
- * 
- * 現在のデバッグ状態を取得し、UIを更新します。
- * 
- * @returns {Promise<void>}
- */
-async function updatePopupState() {
-  try {
-    const state = await getDebugState();
-    render(state);
-  } catch (error) {
-    console.error('状態の取得に失敗しました:', error);
-    render({ tabId: null, attached: false, newErrorInfo: null });
-  }
 }
 
 /**
@@ -245,7 +249,7 @@ async function handleDebugModeToggle() {
   }
 }
 
-// ====== イベント処理 ======
+// ====== イベントリスナー設定 ======
 
 // コピーアイコンのクリックイベント
 const copyIcon = document.getElementById("copyIcon");
@@ -277,5 +281,5 @@ window.addEventListener('beforeunload', async () => {
   await send("HIDE_ERROR_COUNT");
 });
 
-// ====== 初期化 ======
+// ====== 初期化処理 ======
 handleDebugModeToggle();
