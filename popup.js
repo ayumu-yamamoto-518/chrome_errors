@@ -22,14 +22,14 @@ if (!promptArea) {
 /**
  * タイムスタンプをローカル時間形式に変換
  */
-function fmtTs(ts) {
+function formatTimestamp(ts) {
   try { return new Date(ts).toLocaleString(); } catch { return String(ts); }
 }
 
 /**
  * ログレベルのピル（バッジ）を生成
  */
-function pill(level) {
+function createLevelBadge(level) {
   const lv = (level || "info").toLowerCase();
   return `<span class="pill ${lv}">${lv}</span>`;
 }
@@ -75,13 +75,13 @@ function render(state) {
     }
 
     const src = log.source || "";
-    const meta = [log.url, log.line != null ? `L${log.line}` : "", fmtTs(log.ts)]
+    const meta = [log.url, log.line != null ? `L${log.line}` : "", formatTimestamp(log.ts)]
       .filter(Boolean).join(" | ");
 
     newErrorInfoEl.innerHTML = `
       <div class="log">
         <div class="head">
-          ${pill(log.level)}
+          ${createLevelBadge(log.level)}
           <div>${escapeHtml(src)}</div>
           <div class="src">${escapeHtml(meta)}</div>
         </div>
