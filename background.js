@@ -180,7 +180,7 @@ async function getActiveTabId() {
  * @param {number} tabId - タブID
  * @returns {Promise<Object>} 結果オブジェクト
  */
-async function attachToTab(tabId) {
+async function attachDebugger(tabId) {
   const tabState = getTabState(tabId);
   if (tabState.attached) return { ok: true };
 
@@ -438,7 +438,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
 
         // デバッガーをアタッチ
-        const attachRes = await attachToTab(tabId);
+        const attachRes = await attachDebugger(tabId);
         if (attachRes.ok) {
           sendResponse({
             ...getPopupState(tabId),
@@ -531,8 +531,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const tabState = getTabState(tabId);
         
         if (!tabState.attached) {
-          // デバッグモードがOFFの場合 → ONにする
-          const attachRes = await attachToTab(tabId);
+                  // デバッグモードがOFFの場合 → ONにする
+        const attachRes = await attachDebugger(tabId);
           if (attachRes.ok) {
             sendResponse({
               ...getPopupState(tabId),
