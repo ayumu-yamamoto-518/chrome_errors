@@ -235,7 +235,83 @@ async function detachDebugger(tabId) {
   }
 }
 
-// ====== イベント処理 ======
+/**
+ * JavaScript例外を処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Object} params - 例外パラメータ
+ */
+function handleJavaScriptException(tabId, params) {
+  const d = params?.exceptionDetails || {};
+  const text = d?.exception?.description || d?.text || 
+               (d?.exception && (d.exception.value || d.exception.className)) || "Exception thrown";
+  setUpdateErrorBadge(tabId, {
+    level: "error",
+    source: "exception",
+    text: String(text),
+    url: d.url || d?.scriptId || "",
+    line: d.lineNumber,
+    column: d.columnNumber
+  });
+}
+
+/**
+ * コンソールAPI呼び出しを処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Object} params - コンソールAPIパラメータ
+ */
+function handleConsoleAPICall(tabId, params) {
+  const type = params?.type || "log";
+  const level = type === "error" ? "error" : (type === "warning" ? "warning" : "info");
+  const args = (params?.args || []).map(a => a?.value ?? a?.description ?? a?.type);
+  setUpdateErrorBadge(tabId, {
+    level,
+    source: "console",
+    text: args.join(" "),
+    url: "",
+    line: undefined,
+    column: undefined
+  });
+}
+
+/**
+ * ログエントリを処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Object} params - ログエントリパラメータ
+ */
+function handleLogEntry(tabId, params) {
+  const e = params?.entry || {};
+  setUpdateErrorBadge(tabId, {
+    level: e.level || "info",
+    source: e.source || "log",
+    text: e.text || "",
+    url: e.url || "",
+    line: e.lineNumber,
+    column: undefined
+  });
+}
+
+/**
+ * ネットワークエラーを処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Object} params - ネットワークエラーパラメータ
+ */
+function handleNetworkError(tabId, params) {
+  const e = params || {};
+  if (e?.type === "XHR" || e?.type === "Fetch" || e?.blockedReason || e?.errorText) {
+    setUpdateErrorBadge(tabId, {
+      level: "error",
+      source: "network",
+      text: `Network ${e.type || ""} failed: ${e.errorText || e.blockedReason || "unknown"}`,
+      url: "",
+      line: undefined,
+      column: undefined
+    });
+  }
+}
 
 /**
  * Chrome DevTools Protocol のイベントを処理
@@ -247,66 +323,24 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
 
   switch (method) {
     // JavaScript例外が発生した場合
-    case "Runtime.exceptionThrown": {
-      const d = params?.exceptionDetails || {};
-      const text = d?.exception?.description || d?.text || 
-                   (d?.exception && (d.exception.value || d.exception.className)) || "Exception thrown";
-      setUpdateErrorBadge(tabId, {
-        level: "error",
-        source: "exception",
-        text: String(text),
-        url: d.url || d?.scriptId || "",
-        line: d.lineNumber,
-        column: d.columnNumber
-      });
+    case "Runtime.exceptionThrown":
+      handleJavaScriptException(tabId, params);
       break;
-    }
     
     // コンソールAPIが呼ばれた場合（console.error, console.warn等）
-    case "Runtime.consoleAPICalled": {
-      const type = params?.type || "log";
-      const level = type === "error" ? "error" : (type === "warning" ? "warning" : "info");
-      const args = (params?.args || []).map(a => a?.value ?? a?.description ?? a?.type);
-      setUpdateErrorBadge(tabId, {
-        level,
-        source: "console",
-        text: args.join(" "),
-        url: "",
-        line: undefined,
-        column: undefined
-      });
+    case "Runtime.consoleAPICalled":
+      handleConsoleAPICall(tabId, params);
       break;
-    }
     
     // ログエントリが追加された場合
-    case "Log.entryAdded": {
-      const e = params?.entry || {};
-      setUpdateErrorBadge(tabId, {
-        level: e.level || "info",
-        source: e.source || "log",
-        text: e.text || "",
-        url: e.url || "",
-        line: e.lineNumber,
-        column: undefined
-      });
+    case "Log.entryAdded":
+      handleLogEntry(tabId, params);
       break;
-    }
     
     // ネットワークリクエストが失敗した場合
-    case "Network.loadingFailed": {
-      const e = params || {};
-      if (e?.type === "XHR" || e?.type === "Fetch" || e?.blockedReason || e?.errorText) {
-        setUpdateErrorBadge(tabId, {
-          level: "error",
-          source: "network",
-          text: `Network ${e.type || ""} failed: ${e.errorText || e.blockedReason || "unknown"}`,
-          url: "",
-          line: undefined,
-          column: undefined
-        });
-      }
+    case "Network.loadingFailed":
+      handleNetworkError(tabId, params);
       break;
-    }
   }
 });
 
@@ -354,6 +388,152 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 // ====== メッセージ通信 ======
 
 /**
+ * デバッグ状態取得の処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+function handleGetDebugState(tabId, sendResponse) {
+  const popupState = getPopupState(tabId);
+  sendResponse(popupState);
+}
+
+/**
+ * デバッガーアタッチの処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+async function handleAttachDebugger(tabId, sendResponse) {
+  const tabState = getTabState(tabId);
+  
+  // 既にアタッチされている場合は何もしない
+  if (tabState.attached) {
+    sendResponse({
+      ...getPopupState(tabId),
+      message: "既にデバッガーがアタッチされています"
+    });
+    return;
+  }
+
+  // デバッガーをアタッチ
+  const attachRes = await attachDebugger(tabId);
+  if (attachRes.ok) {
+    sendResponse({
+      ...getPopupState(tabId),
+      message: "デバッガーをアタッチしました"
+    });
+  } else {
+    sendResponse({
+      ...getPopupState(tabId),
+      error: attachRes.error,
+      message: "デバッガーのアタッチに失敗しました"
+    });
+  }
+}
+
+/**
+ * デバッガーデタッチの処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+async function handleDetachDebugger(tabId, sendResponse) {
+  const tabState = getTabState(tabId);
+  
+  // 既にデタッチされている場合は何もしない
+  if (!tabState.attached) {
+    sendResponse({
+      ...getPopupState(tabId),
+      message: "デバッガーは既にデタッチされています"
+    });
+    return;
+  }
+
+  // デバッガーをデタッチ
+  const detachRes = await detachDebugger(tabId);
+  if (detachRes.ok) {
+    sendResponse({
+      ...getPopupState(tabId),
+      message: "デバッガーをデタッチしました"
+    });
+  } else {
+    sendResponse({
+      ...getPopupState(tabId),
+      error: detachRes.error,
+      message: "デバッガーのデタッチに失敗しました"
+    });
+  }
+}
+
+/**
+ * デバッグモード切り替えの処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+async function handleToggleDebugMode(tabId, sendResponse) {
+  const tabState = getTabState(tabId);
+  
+  if (!tabState.attached) {
+    // デバッグモードがOFFの場合 → ONにする
+    const attachRes = await attachDebugger(tabId);
+    if (attachRes.ok) {
+      sendResponse({
+        ...getPopupState(tabId),
+        message: "デバッグモードをONにしました"
+      });
+      return;
+    }
+  } else {
+    // デバッグモードがONの場合 → OFFにする
+    const detachRes = await detachDebugger(tabId);
+    if (detachRes.ok) {
+      sendResponse({
+        ...getPopupState(tabId),
+        message: "デバッグモードをOFFにしました"
+      });
+      return;
+    }
+  }
+  
+  // エラー時は現在の状態を返す
+  sendResponse({
+    ...getPopupState(tabId),
+    message: "デバッグモードの切り替えに失敗しました"
+  });
+}
+
+/**
+ * エラーカウント表示の処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+function handleShowErrorCount(tabId, sendResponse) {
+  const tabState = getTabState(tabId);
+  updateBadgeState(tabId, tabState.errorCount);
+  sendResponse({
+    ...getPopupState(tabId),
+    message: "エラーカウントを表示しました"
+  });
+}
+
+/**
+ * エラーカウント非表示の処理
+ * 
+ * @param {number} tabId - タブID
+ * @param {Function} sendResponse - レスポンス送信関数
+ */
+function handleHideErrorCount(tabId, sendResponse) {
+  clearBadgeState(tabId);
+  sendResponse({
+    ...getPopupState(tabId),
+    message: "エラーカウントを非表示にしました"
+  });
+}
+
+/**
  * ポップアップからのメッセージを処理
  * 
  * ポップアップ（popup.js）から送信されるメッセージを受信し、
@@ -364,6 +544,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
  * - ATTACH_DEBUGGER: デバッガーをアタッチ
  * - DETACH_DEBUGGER: デバッガーをデタッチ
  * - TOGGLE_DEBUG_MODE: デバッグモードのON/OFF切り替え
+ * - SHOW_ERROR_COUNT: エラーカウントを表示
+ * - HIDE_ERROR_COUNT: エラーカウントを非表示
  * 
  * @param {Object} msg - 受信したメッセージ
  * @param {string} msg.type - メッセージタイプ
@@ -379,221 +561,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!tabId) return sendResponse({ ok: false, error: "No active tab." });
 
     switch (msg.type) {
-
-      /**
-       * 現在のデバッグ状態を取得
-       * 
-       * 指定されたタブの現在のデバッグ状態とエラー情報を取得します。
-       * デバッガーのアタッチ/デタッチは行わず、状態の確認のみを行います。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} デバッグ状態
-       *   - tabId: number - タブID
-       *   - attached: boolean - デバッガーがアタッチされているか
-       *   - newErrorInfo: Object|null - 最新のエラー情報
-       * 
-       * @example
-       * // 現在の状態を確認
-       * const state = await send("GET_DEBUG_STATE");
-       * console.log(`デバッグ状態: ${state.attached ? 'ON' : 'OFF'}`);
-       */
-      case "GET_DEBUG_STATE": {
-        const popupState = getPopupState(tabId);
-        sendResponse(popupState);
+      case "GET_DEBUG_STATE":
+        handleGetDebugState(tabId, sendResponse);
         break;
-      }
 
-      /**
-       * デバッガーをアタッチ
-       * 
-       * 指定されたタブにChrome DevTools Protocolデバッガーをアタッチします。
-       * 既にアタッチされている場合は何も行わず、現在の状態を返します。
-       * アタッチ後は、JavaScript例外、コンソール出力、ログ、ネットワークエラーを監視します。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} アタッチ結果
-       *   - tabId: number - タブID
-       *   - attached: boolean - デバッガーがアタッチされているか
-       *   - newErrorInfo: Object|null - 最新のエラー情報
-       *   - message: string - 処理結果のメッセージ
-       *   - error?: string - エラーが発生した場合のエラーメッセージ
-       * 
-       * @example
-       * // デバッガーをアタッチ
-       * const result = await send("ATTACH_DEBUGGER");
-       * if (result.attached) {
-       *   console.log("デバッグモードがONになりました");
-       * }
-       */
-      case "ATTACH_DEBUGGER": {
-        const tabState = getTabState(tabId);
-        
-        // 既にアタッチされている場合は何もしない
-        if (tabState.attached) {
-          sendResponse({
-            ...getPopupState(tabId),
-            message: "既にデバッガーがアタッチされています"
-          });
-          break;
-        }
-
-        // デバッガーをアタッチ
-        const attachRes = await attachDebugger(tabId);
-        if (attachRes.ok) {
-          sendResponse({
-            ...getPopupState(tabId),
-            message: "デバッガーをアタッチしました"
-          });
-        } else {
-          sendResponse({
-            ...getPopupState(tabId),
-            error: attachRes.error,
-            message: "デバッガーのアタッチに失敗しました"
-          });
-        }
+      case "ATTACH_DEBUGGER":
+        await handleAttachDebugger(tabId, sendResponse);
         break;
-      }
 
-      /**
-       * デバッガーをデタッチ
-       * 
-       * 指定されたタブからChrome DevTools Protocolデバッガーをデタッチします。
-       * 既にデタッチされている場合は何も行わず、現在の状態を返します。
-       * デタッチ後は、エラー監視が停止し、バッジもクリアされます。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} デタッチ結果
-       *   - tabId: number - タブID
-       *   - attached: boolean - デバッガーがアタッチされているか
-       *   - newErrorInfo: Object|null - 最新のエラー情報
-       *   - message: string - 処理結果のメッセージ
-       *   - error?: string - エラーが発生した場合のエラーメッセージ
-       * 
-       * @example
-       * // デバッガーをデタッチ
-       * const result = await send("DETACH_DEBUGGER");
-       * if (!result.attached) {
-       *   console.log("デバッグモードがOFFになりました");
-       * }
-       */
-      case "DETACH_DEBUGGER": {
-        const tabState = getTabState(tabId);
-        
-        // 既にデタッチされている場合は何もしない
-        if (!tabState.attached) {
-          sendResponse({
-            ...getPopupState(tabId),
-            message: "デバッガーは既にデタッチされています"
-          });
-          break;
-        }
-
-        // デバッガーをデタッチ
-        const detachRes = await detachDebugger(tabId);
-        if (detachRes.ok) {
-          sendResponse({
-            ...getPopupState(tabId),
-            message: "デバッガーをデタッチしました"
-          });
-        } else {
-          sendResponse({
-            ...getPopupState(tabId),
-            error: detachRes.error,
-            message: "デバッガーのデタッチに失敗しました"
-          });
-        }
+      case "DETACH_DEBUGGER":
+        await handleDetachDebugger(tabId, sendResponse);
         break;
-      }
 
-      /**
-       * デバッグモードのON/OFF切り替え
-       * 
-       * 現在のデバッグ状態に応じて、デバッガーのアタッチ/デタッチを切り替えます。
-       * - デバッグモードがOFFの場合 → ONにする（デバッガーをアタッチ）
-       * - デバッグモードがONの場合 → OFFにする（デバッガーをデタッチ）
-       * 
-       * このメッセージタイプは後方互換性のため残しています。
-       * 新しい実装では、ATTACH_DEBUGGER/DETACH_DEBUGGERの使用を推奨します。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} 切り替え結果
-       *   - tabId: number - タブID
-       *   - attached: boolean - デバッガーがアタッチされているか
-       *   - newErrorInfo: Object|null - 最新のエラー情報
-       *   - message: string - 処理結果のメッセージ
-       * 
-       * @example
-       * // デバッグモードを切り替え
-       * const result = await send("TOGGLE_DEBUG_MODE");
-       * console.log(result.message); // "デバッグモードをONにしました" または "デバッグモードをOFFにしました"
-       */
-      case "TOGGLE_DEBUG_MODE": {
-        const tabState = getTabState(tabId);
-        
-        if (!tabState.attached) {
-                  // デバッグモードがOFFの場合 → ONにする
-        const attachRes = await attachDebugger(tabId);
-          if (attachRes.ok) {
-            sendResponse({
-              ...getPopupState(tabId),
-              message: "デバッグモードをONにしました"
-            });
-            break;
-          }
-        } else {
-                  // デバッグモードがONの場合 → OFFにする
-        const detachRes = await detachDebugger(tabId);
-          if (detachRes.ok) {
-            sendResponse({
-              ...getPopupState(tabId),
-              message: "デバッグモードをOFFにしました"
-            });
-            break;
-          }
-        }
-        
-        // エラー時は現在の状態を返す
-        sendResponse({
-          ...getPopupState(tabId),
-          message: "デバッグモードの切り替えに失敗しました"
-        });
+      case "TOGGLE_DEBUG_MODE":
+        await handleToggleDebugMode(tabId, sendResponse);
         break;
-      }
 
-      /**
-       * エラーカウントを表示
-       * 
-       * ポップアップが表示された時に呼び出され、エラーカウントを表示します。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} 処理結果
-       */
-      case "SHOW_ERROR_COUNT": {
-        const tabState = getTabState(tabId);
-        updateBadgeState(tabId, tabState.errorCount);
-        sendResponse({
-          ...getPopupState(tabId),
-          message: "エラーカウントを表示しました"
-        });
+      case "SHOW_ERROR_COUNT":
+        handleShowErrorCount(tabId, sendResponse);
         break;
-      }
 
-      /**
-       * エラーカウントを非表示
-       * 
-       * ポップアップが非表示になった時に呼び出され、エラーカウントを非表示にします。
-       * 
-       * @param {number} tabId - 対象のタブID
-       * @returns {Object} 処理結果
-       */
-      case "HIDE_ERROR_COUNT": {
-        clearBadgeState(tabId);
-        sendResponse({
-          ...getPopupState(tabId),
-          message: "エラーカウントを非表示にしました"
-        });
+      case "HIDE_ERROR_COUNT":
+        handleHideErrorCount(tabId, sendResponse);
         break;
-      }
     }
   })();
   return true;
