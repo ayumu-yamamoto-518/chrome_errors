@@ -58,7 +58,7 @@ function resetTabErrorCount(tabId) {
  * @param {number} tabId - タブID
  * @param {Object} log - ログ情報（level, source, text, url, line, column）
  */
-function setLatest(tabId, log) {
+function setUpdateErrorBadge(tabId, log) {
   const tabState = getTabState(tabId);
   
   // エラー情報を更新
@@ -251,7 +251,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       const d = params?.exceptionDetails || {};
       const text = d?.exception?.description || d?.text || 
                    (d?.exception && (d.exception.value || d.exception.className)) || "Exception thrown";
-      setLatest(tabId, {
+      setUpdateErrorBadge(tabId, {
         level: "error",
         source: "exception",
         text: String(text),
@@ -267,7 +267,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
       const type = params?.type || "log";
       const level = type === "error" ? "error" : (type === "warning" ? "warning" : "info");
       const args = (params?.args || []).map(a => a?.value ?? a?.description ?? a?.type);
-      setLatest(tabId, {
+      setUpdateErrorBadge(tabId, {
         level,
         source: "console",
         text: args.join(" "),
@@ -281,7 +281,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
     // ログエントリが追加された場合
     case "Log.entryAdded": {
       const e = params?.entry || {};
-      setLatest(tabId, {
+      setUpdateErrorBadge(tabId, {
         level: e.level || "info",
         source: e.source || "log",
         text: e.text || "",
@@ -296,7 +296,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
     case "Network.loadingFailed": {
       const e = params || {};
       if (e?.type === "XHR" || e?.type === "Fetch" || e?.blockedReason || e?.errorText) {
-        setLatest(tabId, {
+        setUpdateErrorBadge(tabId, {
           level: "error",
           source: "network",
           text: `Network ${e.type || ""} failed: ${e.errorText || e.blockedReason || "unknown"}`,
