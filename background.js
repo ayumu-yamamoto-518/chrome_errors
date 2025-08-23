@@ -73,17 +73,17 @@ function setUpdateErrorBadge(tabId, log) {
   updateBadgeState(tabId, tabState.errorCount);
   
   // ストレージ状態を保存
-  chromeSaveState();
+  setChromeSaveState();
 }
 
 /**
  * エラー情報をクリア
  * @param {number} tabId - タブID
  */
-function clearLatestError(tabId) {
+function clearNewErrorInfo(tabId) {
   const tabState = getTabState(tabId);
   tabState.newErrorInfo = null;
-  chromeSaveState();
+  setChromeSaveState();
 }
 
 // 3. ポップアップ状態管理（Popup State Management）
@@ -105,7 +105,7 @@ function getPopupState(tabId) {
 /**
  * 状態をChromeストレージに保存
  */
-async function chromeSaveState() {
+async function setChromeSaveState() {
   const stateToSave = {};
   tabStates.forEach((state, tabId) => {
     // セッション情報は保存しない（再起動時に無効になるため）
@@ -199,7 +199,7 @@ async function attachToTab(tabId) {
     tabState.session = target;
     
     // ストレージ状態を保存
-    chromeSaveState();
+    setChromeSaveState();
     
     return { ok: true };
   } catch (e) {
@@ -227,7 +227,7 @@ async function detachFromTab(tabId) {
     // clearBadgeState(tabId);
     
     // ストレージ状態を保存
-    chromeSaveState();
+    setChromeSaveState();
     
     return { ok: true };
   } catch (e) {
