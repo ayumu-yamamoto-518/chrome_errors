@@ -212,7 +212,7 @@ async function attachDebugger(tabId) {
  * @param {number} tabId - タブID
  * @returns {Promise<Object>} 結果オブジェクト
  */
-async function detachFromTab(tabId) {
+async function detachDebugger(tabId) {
   const tabState = getTabState(tabId);
   if (!tabState.attached || !tabState.session) return { ok: true };
   
@@ -489,7 +489,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
 
         // デバッガーをデタッチ
-        const detachRes = await detachFromTab(tabId);
+        const detachRes = await detachDebugger(tabId);
         if (detachRes.ok) {
           sendResponse({
             ...getPopupState(tabId),
@@ -541,8 +541,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             break;
           }
         } else {
-          // デバッグモードがONの場合 → OFFにする
-          const detachRes = await detachFromTab(tabId);
+                  // デバッグモードがONの場合 → OFFにする
+        const detachRes = await detachDebugger(tabId);
           if (detachRes.ok) {
             sendResponse({
               ...getPopupState(tabId),
