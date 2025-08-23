@@ -3,7 +3,7 @@ const CDP_VERSION = "1.3";
 
 // ====== 状態管理 ======
 
-// 1. タブ状態管理（Tab State Management）
+// 1. タブの状態を管理
 
 /**
  * タブIDをキーとして使用する
