@@ -106,6 +106,51 @@ async function toggleDebugMode() {
 // ====== UI更新処理 ======
 
 /**
+ * UIを状態に応じて更新
+ * 
+ * @param {Object} state - デバッグ状態
+ * @param {number|null} state.tabId - タブID
+ * @param {boolean} state.attached - デバッガーがアタッチされているか
+ * @param {Object|null} state.newErrorInfo - 最新のエラー情報
+ */
+function updateUI(state) {
+    try {
+      // 状態を更新
+      currentState = state || { tabId: null, attached: false, newErrorInfo: null };
+      
+      // DOM要素の存在確認
+      const newErrorInfoEl = document.getElementById("newErrorInfo");
+      if (!newErrorInfoEl) {
+        console.error('newErrorInfo element not found');
+        return;
+      }
+  
+      // 状態の検証
+      if (!state || state.tabId == null) {
+        clearErrorDisplay();
+        return;
+      }
+  
+      // エラー情報の表示
+      const log = state.newErrorInfo;
+      if (!log) {
+        showNoErrorState();
+        return;
+      }
+  
+      // エラー詳細の表示
+      showErrorDetails(log);
+      
+      // プロンプトエリアの更新
+      updatePromptArea(log);
+      
+    } catch (error) {
+      console.error('UIの更新に失敗しました:', error);
+      showErrorState();
+    }
+  }
+
+/**
  * エラー情報の表示をクリア
  */
 function clearErrorDisplay() {
@@ -174,51 +219,6 @@ function showErrorState() {
   const newErrorInfoEl = document.getElementById("newErrorInfo");
   if (newErrorInfoEl) {
     newErrorInfoEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
-  }
-}
-
-/**
- * UIを状態に応じて更新
- * 
- * @param {Object} state - デバッグ状態
- * @param {number|null} state.tabId - タブID
- * @param {boolean} state.attached - デバッガーがアタッチされているか
- * @param {Object|null} state.newErrorInfo - 最新のエラー情報
- */
-function updateUI(state) {
-  try {
-    // 状態を更新
-    currentState = state || { tabId: null, attached: false, newErrorInfo: null };
-    
-    // DOM要素の存在確認
-    const newErrorInfoEl = document.getElementById("newErrorInfo");
-    if (!newErrorInfoEl) {
-      console.error('newErrorInfo element not found');
-      return;
-    }
-
-    // 状態の検証
-    if (!state || state.tabId == null) {
-      clearErrorDisplay();
-      return;
-    }
-
-    // エラー情報の表示
-    const log = state.newErrorInfo;
-    if (!log) {
-      showNoErrorState();
-      return;
-    }
-
-    // エラー詳細の表示
-    showErrorDetails(log);
-    
-    // プロンプトエリアの更新
-    updatePromptArea(log);
-    
-  } catch (error) {
-    console.error('UIの更新に失敗しました:', error);
-    showErrorState();
   }
 }
 
