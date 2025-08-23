@@ -5,9 +5,9 @@
  * @type {Object}
  * @property {number|null} tabId - 現在のタブID（nullの場合はタブなし）
  * @property {boolean} attached - デバッガーがアタッチされているか
- * @property {Object|null} latest - 最新のエラー情報（nullの場合はエラーなし）
+ * @property {Object|null} newErrorInfo - 最新のエラー情報（nullの場合はエラーなし）
  */
-let currentState = { tabId: null, attached: false, latest: null };
+let currentState = { tabId: null, attached: false, newErrorInfo: null };
 
 // プロンプトエリアの参照
 const promptArea = document.getElementById("promptArea");
@@ -47,26 +47,26 @@ function escapeHtml(s) {
  * @param {Object} state - デバッグ状態
  * @param {number|null} state.tabId - タブID
  * @param {boolean} state.attached - デバッガーがアタッチされているか
- * @param {Object|null} state.latest - 最新のエラー情報
+ * @param {Object|null} state.newErrorInfo - 最新のエラー情報
  */
 function render(state) {
   try {
-    currentState = state || { tabId: null, attached: false, latest: null };
-    const latestEl = document.getElementById("latest");
+    currentState = state || { tabId: null, attached: false, newErrorInfo: null };
+    const newErrorInfoEl = document.getElementById("newErrorInfo");
 
-    if (!latestEl) {
-      console.error('latest element not found');
+    if (!newErrorInfoEl) {
+      console.error('newErrorInfo element not found');
       return;
     }
 
     if (!state || state.tabId == null) {
-      latestEl.innerHTML = "";
+      newErrorInfoEl.innerHTML = "";
       return;
     }
 
-    const log = state.latest;
+    const log = state.newErrorInfo;
     if (!log) {
-      latestEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
+      newErrorInfoEl.innerHTML = '<div class="empty">まだエラーはありません</div>';
       // promptAreaもクリア
       if (promptArea) {
         promptArea.value = "以下の、エラーを解析してほしい";
@@ -78,7 +78,7 @@ function render(state) {
     const meta = [log.url, log.line != null ? `L${log.line}` : "", fmtTs(log.ts)]
       .filter(Boolean).join(" | ");
 
-    latestEl.innerHTML = `
+    newErrorInfoEl.innerHTML = `
       <div class="log">
         <div class="head">
           ${pill(log.level)}
@@ -97,9 +97,9 @@ function render(state) {
   } catch (error) {
     console.error('UIの更新に失敗しました:', error);
     // エラー時は空の状態を表示
-    const latestEl = document.getElementById("latest");
-    if (latestEl) {
-      latestEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
+    const newErrorInfoEl = document.getElementById("newErrorInfo");
+    if (newErrorInfoEl) {
+      newErrorInfoEl.innerHTML = '<div class="empty">エラーが発生しました</div>';
     }
   }
 }
@@ -209,7 +209,7 @@ async function updatePopupState() {
     render(state);
   } catch (error) {
     console.error('状態の取得に失敗しました:', error);
-    render({ tabId: null, attached: false, latest: null });
+    render({ tabId: null, attached: false, newErrorInfo: null });
   }
 }
 

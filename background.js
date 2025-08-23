@@ -24,13 +24,13 @@ const tabStates = new Map();
  * @param {number} tabId - 対象のタブID
  * @returns {Object} タブの状態オブジェクト
  *   - attached: boolean - デバッガーがアタッチ/デタッチされているか
- *   - latest: Object|null - 最新のエラー情報
+ *   - newErrorInfo: Object|null - 最新のエラー情報
  *   - session: Object|null - CDPデバッガーセッション
  *   - errorCount: number - エラーの累計数
  */
 function getTabState(tabId) {
   if (!tabStates.has(tabId)) {
-    tabStates.set(tabId, { attached: false, latest: null, session: null, errorCount: 0 });
+    tabStates.set(tabId, { attached: false, newErrorInfo: null, session: null, errorCount: 0 });
   }
   return tabStates.get(tabId);
 }
@@ -62,7 +62,7 @@ function setLatest(tabId, log) {
   const tabState = getTabState(tabId);
   
   // エラー情報を更新
-  tabState.latest = { ...log, ts: Date.now() };
+  tabState.newErrorInfo = { ...log, ts: Date.now() };
   
   // エラーレベルかつシステムメッセージ以外の場合のみカウントを増やす
   if (log.level === "error" && log.source !== "system") {
@@ -82,7 +82,7 @@ function setLatest(tabId, log) {
  */
 function clearLatestError(tabId) {
   const tabState = getTabState(tabId);
-  tabState.latest = null;
+  tabState.newErrorInfo = null;
   chromeSaveState();
 }
 
@@ -97,7 +97,7 @@ function getPopupState(tabId) {
   return {
     tabId,
     attached: !!tabState?.attached,
-    latest: tabState?.latest || null
+    newErrorInfo: tabState?.newErrorInfo || null
   };
 }
 
@@ -390,7 +390,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * @returns {Object} デバッグ状態
        *   - tabId: number - タブID
        *   - attached: boolean - デバッガーがアタッチされているか
-       *   - latest: Object|null - 最新のエラー情報
+       *   - newErrorInfo: Object|null - 最新のエラー情報
        * 
        * @example
        * // 現在の状態を確認
@@ -414,7 +414,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * @returns {Object} アタッチ結果
        *   - tabId: number - タブID
        *   - attached: boolean - デバッガーがアタッチされているか
-       *   - latest: Object|null - 最新のエラー情報
+       *   - newErrorInfo: Object|null - 最新のエラー情報
        *   - message: string - 処理結果のメッセージ
        *   - error?: string - エラーが発生した場合のエラーメッセージ
        * 
@@ -465,7 +465,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * @returns {Object} デタッチ結果
        *   - tabId: number - タブID
        *   - attached: boolean - デバッガーがアタッチされているか
-       *   - latest: Object|null - 最新のエラー情報
+       *   - newErrorInfo: Object|null - 最新のエラー情報
        *   - message: string - 処理結果のメッセージ
        *   - error?: string - エラーが発生した場合のエラーメッセージ
        * 
@@ -519,7 +519,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
        * @returns {Object} 切り替え結果
        *   - tabId: number - タブID
        *   - attached: boolean - デバッガーがアタッチされているか
-       *   - latest: Object|null - 最新のエラー情報
+       *   - newErrorInfo: Object|null - 最新のエラー情報
        *   - message: string - 処理結果のメッセージ
        * 
        * @example
