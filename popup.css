@@ -24,6 +24,26 @@ button {
   border: 1px solid #ccc; 
   border-radius: 6px; 
   cursor: pointer; 
+  background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+button:hover {
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+button:active {
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(0);
 }
 
 /* ====== エラーログ表示 ====== */
@@ -120,17 +140,25 @@ textarea {
   background: white;
   border-radius: 4px;
   padding: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.05);
   /* SVGアイコンなのでフィルターは不要 */
 }
 
 .copy-icon:hover {
   opacity: 1;
-  transform: scale(1.1);
+  transform: scale(1.1) translateY(-1px);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .copy-icon:active {
-  transform: scale(0.95);
+  transform: scale(0.95) translateY(0);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 /* 小さなテキスト（説明文） */
