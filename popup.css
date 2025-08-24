@@ -5,6 +5,7 @@ body {
   font: 13px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; 
   margin: 12px; 
   min-width: 420px; 
+  background: #fefbf3; /* 淡いクリーム色 */
 }
 
 /* 横並びの要素（ボタンとステータス表示） */
@@ -50,10 +51,11 @@ button:active {
 
 /* エラーログのコンテナ */
 .log { 
-  border: 1px solid #e5e5e5; 
+  border: 1px solid #e8dcc0; /* クリーム色に合わせた境界線 */
   border-radius: 8px; 
   padding: 8px; 
   margin: 8px 0; 
+  background: #faf6ed; /* より濃いクリーム色 */
 }
 
 /* ログのヘッダー部分（レベル、ソース、メタ情報） */
@@ -123,8 +125,9 @@ textarea {
   min-height: 140px; 
   border-radius: 8px; 
   padding: 8px; 
-  border: 1px solid #ddd; 
+  border: 1px solid #e8dcc0; /* クリーム色に合わせた境界線 */
   padding-right: 40px; /* コピーアイコンのスペース */
+  background: #faf6ed; /* より濃いクリーム色 */
 }
 
 /* コピーアイコン */
@@ -135,15 +138,16 @@ textarea {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.9;
   transition: all 0.2s ease;
   background: white;
-  border-radius: 4px;
+  border-radius: 50%; /* 完全に丸く */
   padding: 2px;
+  border: 2px solid #000; /* 黒い枠線 */
   box-shadow: 
     0 2px 4px rgba(0, 0, 0, 0.1),
     0 1px 2px rgba(0, 0, 0, 0.05);
-  /* SVGアイコンなのでフィルターは不要 */
+  object-fit: contain; /* PNGアイコンのサイズ調整 */
 }
 
 .copy-icon:hover {
@@ -152,6 +156,7 @@ textarea {
   box-shadow: 
     0 4px 8px rgba(0, 0, 0, 0.15),
     0 2px 4px rgba(0, 0, 0, 0.1);
+  border-color: #333; /* ホバー時に少し濃い黒に */
 }
 
 .copy-icon:active {
