@@ -60,7 +60,7 @@ function resetTabErrorCount(tabId) {
 
 // 2. エラー情報管理（Error Log Management）
 /**
- * 最新のエラー情報を設定し、エラーカウントとバッジを更新
+ * 最新のエラー情報を設定し、エラーカウントを更新
  * @param {number} tabId - タブID
  * @param {Object} log - ログ情報（level, source, text, url, line, column）
  */
@@ -78,10 +78,10 @@ function setUpdateErrorBadge(tabId, log) {
   // エラーレベルかつシステムメッセージ以外の場合のみカウントを増やす
   if (log.level === "error" && log.source !== "system") {
     tabState.errorCount++;
+    
+    // エラーカウントが増加した場合のみバッジを更新
+    updateBadgeState(tabId, tabState.errorCount);
   }
-  
-  // バッジ状態を更新
-  updateBadgeState(tabId, tabState.errorCount);
   
   // ストレージ状態を保存
   setChromeSaveState();
@@ -153,7 +153,7 @@ async function chromeLoadState() {
 
 // 5. バッジ状態管理（Badge State Management）
 /**
- * バッジ状態を更新
+ * バッジ状態を更新（エラーカウントに基づく）
  * @param {number} tabId - タブID
  * @param {number} errorCount - エラー数
  */
@@ -164,12 +164,21 @@ function updateBadgeState(tabId, errorCount) {
 }
 
 /**
- * バッジ状態をクリア
+ * バッジ状態を非表示にする（エラーカウントは保持）
  * @param {number} tabId - タブID
  */
-function clearBadgeState(tabId) {
+function hideBadgeState(tabId) {
   chrome.action.setBadgeText({ tabId, text: "" });
   chrome.action.setBadgeBackgroundColor({ tabId, color: "#00000000" });
+}
+
+/**
+ * バッジ状態を表示する（現在のエラーカウントで）
+ * @param {number} tabId - タブID
+ */
+function showBadgeState(tabId) {
+  const tabState = getTabState(tabId);
+  updateBadgeState(tabId, tabState.errorCount);
 }
 
 // ====== ユーティリティ関数 ======
@@ -191,7 +200,7 @@ async function getActiveTabId() {
  */
 async function attachDebugger(tabId) {
   const tabState = getTabState(tabId);
-  if (tabState.attached) return { ok: true };
+  if (tabState.attached) return { ok: true, alreadyAttached: true };
 
   try {
     const target = { tabId };
@@ -223,7 +232,7 @@ async function attachDebugger(tabId) {
  */
 async function detachDebugger(tabId) {
   const tabState = getTabState(tabId);
-  if (!tabState.attached || !tabState.session) return { ok: true };
+  if (!tabState.attached || !tabState.session) return { ok: true, alreadyDetached: true };
   
   try {
     await chrome.debugger.detach(tabState.session);
@@ -362,10 +371,12 @@ chrome.debugger.onDetach.addListener((source, reason) => {
   const tabId = source.tabId;
   if (!tabId) return;
   
-  // タブ状態を更新
+  // タブ状態を更新（外部要因によるデタッチに対応）
   const tabState = getTabState(tabId);
-  tabState.attached = false;
-  tabState.session = null;
+  if (tabState.attached) {
+    tabState.attached = false;
+    tabState.session = null;
+  }
 });
 
 /**
@@ -470,23 +481,16 @@ function handleGetDebugState(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 async function handleAttachDebugger(tabId, sendResponse) {
-  const tabState = getTabState(tabId);
-  
-  // 既にアタッチされている場合は何もしない
-  if (tabState.attached) {
-    sendResponse({
-      ...getPopupState(tabId),
-      message: "既にデバッガーがアタッチされています"
-    });
-    return;
-  }
-
   // デバッガーをアタッチ
   const attachRes = await attachDebugger(tabId);
   if (attachRes.ok) {
+    const message = attachRes.alreadyAttached 
+      ? "既にデバッガーがアタッチされています"
+      : "デバッガーをアタッチしました";
+    
     sendResponse({
       ...getPopupState(tabId),
-      message: "デバッガーをアタッチしました"
+      message: message
     });
   } else {
     sendResponse({
@@ -504,23 +508,16 @@ async function handleAttachDebugger(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 async function handleDetachDebugger(tabId, sendResponse) {
-  const tabState = getTabState(tabId);
-  
-  // 既にデタッチされている場合は何もしない
-  if (!tabState.attached) {
-    sendResponse({
-      ...getPopupState(tabId),
-      message: "デバッガーは既にデタッチされています"
-    });
-    return;
-  }
-
   // デバッガーをデタッチ
   const detachRes = await detachDebugger(tabId);
   if (detachRes.ok) {
+    const message = detachRes.alreadyDetached 
+      ? "デバッガーは既にデタッチされています"
+      : "デバッガーをデタッチしました";
+    
     sendResponse({
       ...getPopupState(tabId),
-      message: "デバッガーをデタッチしました"
+      message: message
     });
   } else {
     sendResponse({
@@ -576,9 +573,9 @@ async function handleToggleDebugMode(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 function handleShowErrorCount(tabId, sendResponse) {
-  const tabState = getTabState(tabId);
+  // 現在のエラーカウントでバッジを表示
+  showBadgeState(tabId);
   
-  updateBadgeState(tabId, tabState.errorCount);
   sendResponse({
     ...getPopupState(tabId),
     message: "エラーカウントを表示しました"
@@ -592,9 +589,8 @@ function handleShowErrorCount(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 function handleHideErrorCount(tabId, sendResponse) {
-  const tabState = getTabState(tabId);
-  
-  clearBadgeState(tabId);
+  // バッジを非表示にする（エラーカウントは保持）
+  hideBadgeState(tabId);
   
   sendResponse({
     ...getPopupState(tabId),
