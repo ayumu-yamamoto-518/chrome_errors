@@ -292,7 +292,6 @@ function appendToEditor(text) {
 async function handleDebugModeToggle() {
   try {
     const result = await toggleDebugMode();
-    console.log(result.message); // 切り替え結果をログ出力
     
     // 最新の状態を取得してUIを更新
     await updatePopupState();
@@ -317,20 +316,17 @@ if (copyIcon) {
 
 // ポップアップの表示/非表示に合わせてエラーカウントを制御
 window.addEventListener('focus', async () => {
-  console.log('=== ポップアップ表示 ===');
   // エラーカウントを表示
   await send("SHOW_ERROR_COUNT");
 });
 
 window.addEventListener('blur', async () => {
-  console.log('=== ポップアップ非表示 ===');
   // エラーカウントを非表示
   await send("HIDE_ERROR_COUNT");
 });
 
 // ポップアップが閉じられる時
 window.addEventListener('beforeunload', async () => {
-  console.log('=== ポップアップ閉じる ===');
   // エラーカウントを非表示
   await send("HIDE_ERROR_COUNT");
 });

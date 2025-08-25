@@ -65,29 +65,19 @@ function resetTabErrorCount(tabId) {
  * @param {Object} log - ログ情報（level, source, text, url, line, column）
  */
 function setUpdateErrorBadge(tabId, log) {
-  console.log(`=== setUpdateErrorBadge START ===`);
-  console.log(`tabId: ${tabId}, log:`, log);
-  
   const tabState = getTabState(tabId);
-  console.log(`tabState.errorCount before: ${tabState.errorCount}`);
-  console.log(`tabState.attached: ${tabState.attached}`);
   
   // エラー情報を更新
   tabState.newErrorInfo = { ...log, ts: Date.now() };
   
   // デバッガーがアタッチされていない場合はエラーカウントを加算しない
   if (!tabState.attached) {
-    console.log(`Debugger not attached, skipping error count increment`);
-    console.log(`=== setUpdateErrorBadge END (skipped) ===`);
     return;
   }
   
   // エラーレベルかつシステムメッセージ以外の場合のみカウントを増やす
   if (log.level === "error" && log.source !== "system") {
     tabState.errorCount++;
-    console.log(`Error count incremented to: ${tabState.errorCount}`);
-  } else {
-    console.log(`Error count not incremented (level: ${log.level}, source: ${log.source})`);
   }
   
   // バッジ状態を更新
@@ -95,8 +85,6 @@ function setUpdateErrorBadge(tabId, log) {
   
   // ストレージ状態を保存
   setChromeSaveState();
-  
-  console.log(`=== setUpdateErrorBadge END ===`);
 }
 
 /**
@@ -158,8 +146,6 @@ async function chromeLoadState() {
         session: null
       });
     });
-    
-    console.log(`状態を復元しました: ${Object.keys(savedState).length}個のタブ`);
   } catch (error) {
     console.error('状態の復元に失敗しました:', error);
   }
@@ -344,33 +330,26 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   const tabId = source.tabId;
   if (!tabId) return;
 
-  console.log(`CDP Event: tabId=${tabId}, method=${method}`);
-  
   const tabState = getTabState(tabId);
-  console.log(`tabState.attached: ${tabState.attached}`);
 
   switch (method) {
     // JavaScript例外が発生した場合
     case "Runtime.exceptionThrown":
-      console.log(`Handling JavaScript exception`);
       handleJavaScriptException(tabId, params);
       break;
     
     // コンソールAPIが呼ばれた場合（console.error, console.warn等）
     case "Runtime.consoleAPICalled":
-      console.log(`Handling console API call`);
       handleConsoleAPICall(tabId, params);
       break;
     
     // ログエントリが追加された場合
     case "Log.entryAdded":
-      console.log(`Handling log entry`);
       handleLogEntry(tabId, params);
       break;
     
     // ネットワークリクエストが失敗した場合
     case "Network.loadingFailed":
-      console.log(`Handling network error`);
       handleNetworkError(tabId, params);
       break;
   }
@@ -412,8 +391,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     // 自動リセットを無効化 - ユーザーが手動でリセットするまで保持
     // resetTabErrorCount(tabId);
     // clearBadgeState(tabId);
-    
-    console.log(`Tab ${tabId} updated - keeping error count`);
   }
 });
 
@@ -599,20 +576,13 @@ async function handleToggleDebugMode(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 function handleShowErrorCount(tabId, sendResponse) {
-  console.log(`=== SHOW_ERROR_COUNT START ===`);
-  console.log(`tabId: ${tabId}`);
-  
   const tabState = getTabState(tabId);
-  console.log(`tabState.errorCount: ${tabState.errorCount}`);
-  console.log(`tabState.attached: ${tabState.attached}`);
   
   updateBadgeState(tabId, tabState.errorCount);
   sendResponse({
     ...getPopupState(tabId),
     message: "エラーカウントを表示しました"
   });
-  
-  console.log(`=== SHOW_ERROR_COUNT END ===`);
 }
 
 /**
@@ -622,23 +592,14 @@ function handleShowErrorCount(tabId, sendResponse) {
  * @param {Function} sendResponse - レスポンス送信関数
  */
 function handleHideErrorCount(tabId, sendResponse) {
-  console.log(`=== HIDE_ERROR_COUNT START ===`);
-  console.log(`tabId: ${tabId}`);
-  
   const tabState = getTabState(tabId);
-  console.log(`tabState for ${tabId}:`, tabState);
-  console.log(`errorCount before clearBadgeState: ${tabState.errorCount}`);
-  console.log(`tabState.attached: ${tabState.attached}`);
   
   clearBadgeState(tabId);
   
-  console.log(`errorCount after clearBadgeState: ${tabState.errorCount}`);
   sendResponse({
     ...getPopupState(tabId),
     message: "エラーカウントを非表示にしました"
   });
-  
-  console.log(`=== HIDE_ERROR_COUNT END ===`);
 }
 
 // ====== 初期化 ======
